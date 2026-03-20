@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import notebook from './components/notebook/notebook.vue';
+import sideMenue from './components/sideMenue/sideMenue.vue';
 </script>
 
 <template>
-  <h1>hello</h1>
+
   <notebook></notebook>
+  <side-menue></side-menue>
 </template>
 
-<style scoped></style>
+<style scoped>
+#app {           /* Vue 项目通常是这个根元素 */
+  height: 100%;
+}
+</style>

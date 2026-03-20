@@ -1,147 +1,50 @@
 <script setup lang="ts">
-import { ref,computed } from 'vue'
+import { ref,onMounted,watch } from 'vue'
+import dragLayer from './dragLayer.vue'
+import navigation from './noteNavigation.vue'
+import resizeHandle from './resizeHandle.vue'
 
-//展开
-const isExpanded = ref(false)           
-const noteContent = ref('')
-
-const stickState = ref('固定')
-//拖拽
+const isExpanded = ref(false)
 const allowDrag = ref(true)
+const mouseState = ref('none')
+const textContent = ref('')
+
 const pos = ref({ right: 40, top: 40 })
-const isDragging = ref(false)
-let startX = 0
-let startY = 0
-let dragPerformed = false
-//缩放
-const isResizing = ref(false)          // 是否正在调整大小
-const resizeStart = { x: 0, y: 0 }     // 调整大小时的起点（鼠标位置 + 当前尺寸）
+const size = ref({ width: 275, height: 400 })
 
-const currentWidth = ref(300)
-const currentHeight = ref(400)
-
-//拖拽
-const startDrag = (e: PointerEvent) => {
-
-    if(e.target instanceof HTMLElement &&e.target.closest('.resize-handle' )) return;
- 
-    else if(!allowDrag.value) return
-
-    isDragging.value = true
-    dragPerformed = false
-
-    // 注意这里的正负号（因为用的是 right）
-    startX = e.clientX + pos.value.right
-    startY = e.clientY - pos.value.top
-
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', stopDrag)
-    window.addEventListener('pointercancel', stopDrag)
-
-    e.preventDefault()
-}
-
-const onMove = (e: PointerEvent) => {
-    if (!isDragging.value) return
-
-    // 移动距离判断（可优化，但先保持你的逻辑）
-    const dx = Math.abs(e.clientX - (startX - pos.value.right))
-    const dy = Math.abs(e.clientY - (startY + pos.value.top))
-    if (dx > 5 || dy > 5) {
-        dragPerformed = true
-    }
-
-    // 核心：更新 right 和 top
-    pos.value.right = startX - e.clientX
-    pos.value.top   = e.clientY - startY
-}
-
-const stopDrag = () => {
-    isDragging.value = false
-    window.removeEventListener('pointermove', onMove)
-    window.removeEventListener('pointerup', stopDrag)
-    window.removeEventListener('pointercancel', stopDrag)
-}
-//展开
-const open = () => {
-    if (!dragPerformed) {
-        isExpanded.value = true
-    }
-}
-
-const close = () => {
-    isExpanded.value = false
-}
-
-const handleContainerClick = (e: MouseEvent) => {
-    if (dragPerformed) {
-        e.stopPropagation()
-        e.preventDefault()
-        dragPerformed = false
-        return
-    }
-    open()
-}
-//固定
-const changeStickState = (e: MouseEvent) =>{
-    if (dragPerformed) {
-        dragPerformed = false
-        return
-    }
-    allowDrag.value = !allowDrag.value
-    if(!allowDrag.value) stickState.value = "解锁";
-    else stickState.value = "固定";
-}
-//缩放
-const startResize = (e: PointerEvent) => {
-  // 只在展开状态下允许调整大小
-  if (!isExpanded.value) return
-
-  isResizing.value = true
-  dragPerformed = false   // 防止误触发点击
-
-  resizeStart.x = e.clientX
-  resizeStart.y = e.clientY
-
-  // 记录开始时的尺寸（以便计算增量）
-  const initialWidth = currentWidth.value
-  const initialHeight = currentHeight.value
-
-  const onResizeMove = (moveEvent: PointerEvent) => {
-    if (!isResizing.value) return
-
-    const deltaX = resizeStart.x - moveEvent.clientX 
-    const deltaY = moveEvent.clientY - resizeStart.y
-
-    // 从右上角定位 → 向右下拖拽增加宽度/高度，向左上拖拽减小
-    let newWidth = initialWidth + deltaX
-    let newHeight = initialHeight + deltaY
-
-    // 最小尺寸限制（防止缩太小）
-    newWidth = Math.max(200, newWidth)     // 最小宽度建议200px
-    newHeight = Math.max(150, newHeight)   // 最小高度建议150px
-
-    // 可选：最大尺寸限制
-    newWidth = Math.min(window.innerWidth - pos.value.right - 20, newWidth)
-    newHeight = Math.min(window.innerHeight - pos.value.top - 20, newHeight)
-
-    currentWidth.value = newWidth
-    currentHeight.value = newHeight
+onMounted(() => {
+  const saved = localStorage.getItem('notebook-text')
+  if (saved !== null) {
+    textContent.value = saved
   }
+  console.log('work')
+})
+watch(textContent, (newValue) => {
+  localStorage.setItem('notebook-text', newValue)
+})
 
-  const stopResize = () => {
-    isResizing.value = false
-    window.removeEventListener('pointermove', onResizeMove)
-    window.removeEventListener('pointerup', stopResize)
-    window.removeEventListener('pointercancel', stopResize)
+const move = ({ right, top }: { right: number; top: number }) => {
+  pos.value.right = right
+  pos.value.top = top
+}
+const resize = ({ width, height }: { width: number; height: number }) => {
+  size.value.width = width
+  size.value.height = height
+}
+const changeDragAllow = (dontDrag: boolean) => {
+  allowDrag.value = dontDrag // ← 关键：dontDrag=true 意思是“不要拖” → allowDrag=false
+}
+const changeExpandAllow = (dontExpand: boolean) => {
+  isExpanded.value = dontExpand
+}
+const cleanTextContent = () =>{
+  textContent.value = ''
+}
+const handleMouseState = (currMouseState: string) => {
+  mouseState.value = currMouseState
+  if (mouseState.value == 'expand') {
+    isExpanded.value = true
   }
-
-  window.addEventListener('pointermove', onResizeMove)
-  window.addEventListener('pointerup', stopResize)
-  window.addEventListener('pointercancel', stopResize)
-
-  e.preventDefault()
-  e.stopPropagation()
 }
 </script>
 
@@ -149,36 +52,59 @@ const startResize = (e: PointerEvent) => {
   <div
     class="container"
     :class="{ expanded: isExpanded }"
-    :style="{ 
-        right: pos.right + 'px', 
-        top: pos.top + 'px',
-        width: isExpanded ? currentWidth + 'px' : '64px',
-        height: isExpanded ? currentHeight + 'px' : '64px',
-        }"
-    @pointerdown="startDrag"
-    @click="handleContainerClick"
+    :style="{
+      right: pos.right + 'px',
+      top: pos.top + 'px',
+      width: isExpanded ? size.width + 'px' : '64px',
+      height: isExpanded ? size.height + 'px' : '64px',
+    }"
   >
-    <!-- 展开状态 -->
-    <div v-if="isExpanded" class="expanded-content">
-        <div class="navigation">
-            <button @click.stop="close">关闭</button>
-            <button @click.stop="changeStickState" :class="{stick:!allowDrag}">{{stickState}}</button>
-        </div>
+    <div v-if="isExpanded" class="container-expand">
+      <navigation
+        :allow-drag="allowDrag"
+        @dont-expand="changeExpandAllow"
+        @dont-drag="changeDragAllow"
+        @clean-text="cleanTextContent"
+      ></navigation>
+      <dragLayer
+        :curr-pos="[pos.right, pos.top]"
+        :allow-drag="allowDrag"
+        :is-expanded="true"
+        :mouse-state="mouseState"
+        @moved-pos="move"
+        @mouse-state="handleMouseState"
+      >
         <textarea
-            placeholder="写点什么"
-            v-model="noteContent"
-        ></textarea>
-        <div
-            class="resize-handle"
-            @pointerdown.stop="startResize"
+          class="text-editor"
+          placeholder="请输入文本"
+          :style="{
+            width: size.width - 50 + 'px',
+            height: size.height - 55 + 'px',
+          }"
+          v-model="textContent"
+          ></textarea
         >
-        </div>
 
+        <resizeHandle
+          :curr-size="[size.width, size.height]"
+          :is-expanded="true"
+          @changed-size="resize"
+          @mosu-state="handleMouseState"
+        ></resizeHandle>
+      </dragLayer>
     </div>
 
-    <!-- 收起状态 -->
-    <div v-else class="collapsed-content">
-      <span class="handle">📝</span>
+    <div v-else class="container-fold">
+      <div class="fold-icon">🌕</div>
+      <dragLayer
+        :curr-pos="[pos.right, pos.top]"
+        :allow-drag="true"
+        :is-expanded="false"
+        :mouse-state="mouseState"
+        @moved-pos="move"
+        @mouse-state="handleMouseState"
+      >
+      </dragLayer>
     </div>
   </div>
 </template>
@@ -186,109 +112,65 @@ const startResize = (e: PointerEvent) => {
 <style scoped>
 .container {
   position: absolute;
-  width: 64px;
-  height: 64px;
-  z-index: 999;
+  z-index: 100;
   border: solid 2px black;
   border-radius: 32px;
   overflow: hidden;
   background: white;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   cursor: move;
   user-select: none;
-  transition: width 0.2s, height 0.2s, border-radius 0.2s;
-  -webkit-tap-highlight-color: transparent;
+  /*transition: width 0.2s, height 0.2s, border-radius 0.2s;*/
 }
-
 .container.expanded {
   width: 300px;
   height: 400px;
   border-radius: 16px;
+  overflow: hidden;
   cursor: default;
 }
-
-.expanded-content {
+.container-expand {
   display: flex;
   position: relative;
+  overflow: hidden;
   flex-direction: column;
   height: 100%;
   width: 100%;
 }
-
-.navigation {
-  display: flex;
-  min-height: 40px;
-  flex-direction: row-reverse;
-  align-items: center;
-  gap: 10px;
-  border-bottom: solid 1px #ddd;
-  padding: 0 12px;
-  background: #f5f5f5;
-  flex-shrink: 0;
-}
-
-button.stick {
-    background: black;
-    color: white;
-}
-
-button {
-  height: 28px;
-  padding: 0 12px;
-  border: 1px solid #ccc;
-  border-radius: 14px;
-  background: white;
-  cursor: pointer;
-  font-size: 13px;
-}
-
-textarea {
-  width: 100%;
-  flex: 1;
-  border: none;
-  resize: none;
-  padding: 12px;
-  box-sizing: border-box;
-  font-family: inherit;
-  font-size: 14px;
-  min-height: 0;
-}
-
-textarea:focus {
-  outline: none;
-}
-
-.collapsed-content {
+.container-fold {
   width: 100%;
   height: 100%;
   display: flex;
+  overflow: hidden;
   align-items: center;
   justify-content: center;
 }
-
-.resize-handle {
+.fold-icon {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 16px;
-  height: 16px;
-  background: #ccc;
-  cursor: nwse-resize;          /* 斜向调整大小光标 */
-  border-radius: 0 0 4px 0;
-  z-index: 10;
-}
-
-.resize-handle:hover {
-  background: #999;
-}
-
-.container *:not(textarea) {
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 42px;
+  color: #ffd700; /* 金黄色月亮 */
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
   user-select: none;
+  transition: transform 0.2s;
 }
 
-textarea {
-  user-select: text;
-  cursor: text;
+.container-fold:hover .fold-icon {
+  transform: scale(1.12); /* 鼠标悬停时稍微放大 */
+}
+
+.text-editor {
+  position: relative;
+  top: 50px;
+  border: none;
+  line-height: 20px;
+  z-index: 52;
+  background: yellow;
+  outline: none;
+  resize: none;
 }
 </style>
-
