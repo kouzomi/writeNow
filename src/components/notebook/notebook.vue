@@ -1,110 +1,42 @@
 <script setup lang="ts">
-import { ref,onMounted,watch } from 'vue'
-import dragLayer from './dragLayer.vue'
-import navigation from './noteNavigation.vue'
-import resizeHandle from './resizeHandle.vue'
+import { useNotebookStore } from '@/stores/notebook'
+import dragLayer from './part/dragLayer.vue'
+import navigation from './part/noteNavigation.vue'
+import resizeHandle from './part/resizeHandle.vue'
 
-const isExpanded = ref(false)
-const allowDrag = ref(true)
-const mouseState = ref('none')
-const textContent = ref('')
-
-const pos = ref({ right: 40, top: 40 })
-const size = ref({ width: 275, height: 400 })
-
-onMounted(() => {
-  const saved = localStorage.getItem('notebook-text')
-  if (saved !== null) {
-    textContent.value = saved
-  }
-  console.log('work')
-})
-watch(textContent, (newValue) => {
-  localStorage.setItem('notebook-text', newValue)
-})
-
-const move = ({ right, top }: { right: number; top: number }) => {
-  pos.value.right = right
-  pos.value.top = top
-}
-const resize = ({ width, height }: { width: number; height: number }) => {
-  size.value.width = width
-  size.value.height = height
-}
-const changeDragAllow = (dontDrag: boolean) => {
-  allowDrag.value = dontDrag // ← 关键：dontDrag=true 意思是“不要拖” → allowDrag=false
-}
-const changeExpandAllow = (dontExpand: boolean) => {
-  isExpanded.value = dontExpand
-}
-const cleanTextContent = () =>{
-  textContent.value = ''
-}
-const handleMouseState = (currMouseState: string) => {
-  mouseState.value = currMouseState
-  if (mouseState.value == 'expand') {
-    isExpanded.value = true
-  }
-}
+const store = useNotebookStore()
 </script>
 
 <template>
   <div
     class="container"
-    :class="{ expanded: isExpanded }"
+    :class="{ expanded: store.isExpanded }"
     :style="{
-      right: pos.right + 'px',
-      top: pos.top + 'px',
-      width: isExpanded ? size.width + 'px' : '64px',
-      height: isExpanded ? size.height + 'px' : '64px',
+      right: store.pos.right + 'px',
+      top: store.pos.top + 'px',
+      width: store.isExpanded ? store.size.width + 'px' : '64px',
+      height: store.isExpanded ? store.size.height + 'px' : '64px',
     }"
   >
-    <div v-if="isExpanded" class="container-expand">
-      <navigation
-        :allow-drag="allowDrag"
-        @dont-expand="changeExpandAllow"
-        @dont-drag="changeDragAllow"
-        @clean-text="cleanTextContent"
-      ></navigation>
-      <dragLayer
-        :curr-pos="[pos.right, pos.top]"
-        :allow-drag="allowDrag"
-        :is-expanded="true"
-        :mouse-state="mouseState"
-        @moved-pos="move"
-        @mouse-state="handleMouseState"
-      >
+    <div v-if="store.isExpanded" class="container-expand">
+      <navigation />
+      <dragLayer>
         <textarea
           class="text-editor"
-          placeholder="请输入文本"
+          placeholder="记录灵感"
           :style="{
-            width: size.width - 50 + 'px',
-            height: size.height - 55 + 'px',
+            width: store.size.width - 50 + 'px',
+            height: store.size.height - 60 + 'px',
           }"
-          v-model="textContent"
-          ></textarea
-        >
-
-        <resizeHandle
-          :curr-size="[size.width, size.height]"
-          :is-expanded="true"
-          @changed-size="resize"
-          @mosu-state="handleMouseState"
-        ></resizeHandle>
+          v-model="store.textContent"
+        ></textarea>
+        <resizeHandle />
       </dragLayer>
     </div>
 
     <div v-else class="container-fold">
       <div class="fold-icon">🌕</div>
-      <dragLayer
-        :curr-pos="[pos.right, pos.top]"
-        :allow-drag="true"
-        :is-expanded="false"
-        :mouse-state="mouseState"
-        @moved-pos="move"
-        @mouse-state="handleMouseState"
-      >
-      </dragLayer>
+      <dragLayer />
     </div>
   </div>
 </template>
@@ -165,12 +97,14 @@ const handleMouseState = (currMouseState: string) => {
 
 .text-editor {
   position: relative;
-  top: 50px;
+  top: 55px;
+  vertical-align: top;
   border: none;
   line-height: 20px;
   z-index: 52;
-  background: yellow;
+  background: transparent;
   outline: none;
   resize: none;
+  font-size: 15px;
 }
 </style>
