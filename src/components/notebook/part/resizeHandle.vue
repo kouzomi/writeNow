@@ -15,7 +15,7 @@ const startResize = (e:PointerEvent) =>{
     const initialHeight = store.size.height
 
     const onResizeMove = (moveEvent: PointerEvent) => {
-
+        store.isAnimating = false
         const deltaX = startWidth - moveEvent.clientX 
         const deltaY = moveEvent.clientY - startHeight
 
@@ -32,14 +32,13 @@ const startResize = (e:PointerEvent) =>{
         
     }
     const stopResize = () => {
+        store.isAnimating = true
         window.removeEventListener('pointermove', onResizeMove)
         window.removeEventListener('pointerup', stopResize)
-        window.removeEventListener('pointercancel', stopResize)
     }
 
     window.addEventListener('pointermove', onResizeMove)
     window.addEventListener('pointerup', stopResize)
-    window.addEventListener('pointercancel', stopResize)
 
     e.preventDefault()
     e.stopPropagation()

@@ -8,16 +8,22 @@ const store = useCatalogStore()
 </script>
 
 <template>
-  <div class="sidebar-wrapper" :class="{ collapsed: !store.isMenueExpanded }">
-    <div class="container">
+  <div class="sidebar-wrapper">
+    <div class="container" :class="{ collapsed: !store.isMenueExpanded }">
       <sideNavi></sideNavi>
       <SideTool></SideTool>
       <sideContainer></sideContainer>
     </div>
-
-    <button class="toggle-btn" :class="{ isChosen: store.isMenueExpanded }" @click="store.toggleMenueExpand">
-      {{ store.isMenueExpanded ? '◀' : '▶' }}
-    </button>
+    <div class="side">
+      <button
+        class="toggle-btn"
+        :class="{ isChosen: store.isMenueExpanded }"
+        @click="store.toggleMenueExpand"
+      >
+        {{ store.isMenueExpanded ? '◀' : '▶' }}
+      </button>
+      <div></div>
+    </div>
   </div>
 </template>
 
@@ -26,33 +32,36 @@ const store = useCatalogStore()
   position: relative;
   display: flex;
   height: 100%;
-  width: 275px;
   flex-shrink: 0;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* 平滑过渡 */
   z-index: 100;
-  background-color: #F5F7FA;
-  border-right: solid 2px black;
-}
-
-.collapsed {
-  transform: translateX(-275px);
 }
 .container {
-  display: flex; /* 修正：position: flex 是无效的，应为 display: flex */
+  display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  width: 100%;
+  overflow: hidden;
+  width: 275px;
   height: 100%;
+  background-color: #f5f7fa;
+  border-right: solid black 2px;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.collapsed {
+  width: 0px;
+}
+.side {
+  width: 40px;
+  height: 100%;
+  background: transparent;
 }
 .toggle-btn {
   position: absolute;
-  right: -42px; /* 让他悬浮在侧边栏右侧边缘外 */
   width: 40px;
   height: 40px;
-  background: #F5F7FA;
+  background: #f5f7fa;
   cursor: pointer;
   font-size: 12px;
-  border-right:solid 2px black;
+  border-right: solid 2px black;
   border-bottom: solid 2px black;
   border-top: none;
   border-left: none;

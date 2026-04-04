@@ -1,29 +1,37 @@
 <script setup lang="ts">
-const emit = defineEmits(['mouseState'])
+import Document from '@tiptap/extension-document'
+import Paragraph from '@tiptap/extension-paragraph'
+import Text from '@tiptap/extension-text'
+import { EditorContent, useEditor } from '@tiptap/vue-3'
+import { useNotebookStore } from '@/stores/notebook'
 
-const startText =(e:PointerEvent) =>{
-    console.log('start text')
-}
+const store = useNotebookStore()
+const editor = useEditor({
+    extensions: [
+        Document,
+        Paragraph,
+        Text,
+    ],
+    content: `hello`
+})
 </script>
 
 <template>
-    <textarea class="editor"
-    @pointerdown.stop="startText" >
-        
-    </textarea>
+  <editor-content :editor="editor" class="text-editor" 
+    :style="{ width: store.size.width - 50 + 'px',height: store.size.height - 60 + 'px',}"/>
 </template>
 
 <style scoped>
-.editor {
-    position: relative;
-    z-index: 60;
-    width: 100%;
-    height: 100%;
-    font-size: 16px;
-    line-height: normal;
-    background: yellow;
-    border: none;
-    outline: solid blue 2px;
-    /*background: transparent;*/
+
+.text-editor {
+  position: relative;
+  width: 100px;
+  font-size: 15px;
+  text-align: left;    /* 强制左对齐，不受父级居中影响 */
 }
+.container {
+  display: flex;
+  justify-content: center;
+}
+
 </style>

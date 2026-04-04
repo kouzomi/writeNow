@@ -15,6 +15,7 @@ interface Catalog {
 export const useCatalogStore = defineStore('catalog', () => {
   
   const isMenueExpanded = ref(true)
+  const currentWidth = ref(275)
 
   const viewMode = ref<'text' | 'card' | 'map'>('text')
   
@@ -107,6 +108,7 @@ export const useCatalogStore = defineStore('catalog', () => {
 
 
   return {
+    currentWidth,
     viewMode,
     isMenueExpanded,isText, isCard, isMap,
     currentCatalogList, currentCount, getCatalogById,

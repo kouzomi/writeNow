@@ -27,7 +27,6 @@ const handleMouseDown = (e: PointerEvent) => {
       if(!store.isExpanded) {
         store.toggleExpand(true)
       }
-      
     }
     isClicking.value = false
     window.removeEventListener('pointermove', mouseMoving)

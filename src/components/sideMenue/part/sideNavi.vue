@@ -20,6 +20,7 @@ const store = useCatalogStore()
   justify-content: center;
   align-items: center;
   cursor: pointer;
+  flex-shrink: 0;
 }
 .state {
   height: 28px;
@@ -29,6 +30,7 @@ const store = useCatalogStore()
   justify-content: center;
   align-items: center;
   background: transparent;
+  flex-shrink: 0;
   overflow: hidden;
 }
 .isChosen {

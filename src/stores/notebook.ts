@@ -6,8 +6,9 @@ import configContent from '@/data/example.json'
 export const useNotebookStore = defineStore('notebook', () => {
   // 基础状态
   const isExpanded = ref(false)
+  const isAnimating = ref(true)
   const allowDrag = ref(true)
-  const textContent = ref(configContent.text)
+  const textContent = ref('')
 
   // 坐标与尺寸
   const pos = ref({ right: 40, top: 40 })
@@ -35,7 +36,7 @@ export const useNotebookStore = defineStore('notebook', () => {
   }
 
   return {
-    isExpanded, allowDrag, textContent,
+    isExpanded, allowDrag, textContent,isAnimating,
     pos, size,
     toggleExpand, setAllowDrag, updatePos, updateSize, clearContent, 
   }

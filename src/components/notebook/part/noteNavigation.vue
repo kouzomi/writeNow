@@ -35,6 +35,7 @@ button {
   cursor: pointer;
   font-size: 13px;
   overflow: hidden;
+  flex-shrink: 0
 }
 .navigation {
   position: relative;

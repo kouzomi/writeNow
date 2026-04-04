@@ -18,7 +18,7 @@ const store = useCatalogStore()
   flex-direction: row;
   align-items: center;
   padding-left: 15px;
-  gap: 150px;
+  gap: 135px;
   flex-shrink: 0;
 }
 label {
@@ -27,6 +27,8 @@ label {
   height: 28px;
   width: 50px;
   font-size: 15px;
+  flex-shrink: 0;
+  overflow: hidden;
 }
 button {
   height: 28px;
@@ -34,6 +36,7 @@ button {
   border: none;
   background: transparent;
   cursor: pointer;
+  flex-shrink: 0;
   overflow: hidden;
   font-size: 15px;
 }

@@ -3,14 +3,14 @@ import { useNotebookStore } from '@/stores/notebook'
 import dragLayer from './part/dragLayer.vue'
 import navigation from './part/noteNavigation.vue'
 import resizeHandle from './part/resizeHandle.vue'
-
+import texteditor from './part/texteditor.vue'
 const store = useNotebookStore()
 </script>
 
 <template>
   <div
     class="container"
-    :class="{ expanded: store.isExpanded }"
+    :class="{ expanded: store.isExpanded, animating: store.isAnimating  }"
     :style="{
       right: store.pos.right + 'px',
       top: store.pos.top + 'px',
@@ -21,15 +21,7 @@ const store = useNotebookStore()
     <div v-if="store.isExpanded" class="container-expand">
       <navigation />
       <dragLayer>
-        <textarea
-          class="text-editor"
-          placeholder="记录灵感"
-          :style="{
-            width: store.size.width - 50 + 'px',
-            height: store.size.height - 60 + 'px',
-          }"
-          v-model="store.textContent"
-        ></textarea>
+        <texteditor></texteditor>
         <resizeHandle />
       </dragLayer>
     </div>
@@ -44,7 +36,7 @@ const store = useNotebookStore()
 <style scoped>
 .container {
   position: absolute;
-  z-index: 100;
+  z-index: 150;
   border: solid 2px black;
   border-radius: 32px;
   overflow: hidden;
@@ -52,7 +44,6 @@ const store = useNotebookStore()
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   cursor: move;
   user-select: none;
-  /*transition: width 0.2s, height 0.2s, border-radius 0.2s;*/
 }
 .container.expanded {
   width: 300px;
@@ -60,6 +51,12 @@ const store = useNotebookStore()
   border-radius: 16px;
   overflow: hidden;
   cursor: default;
+}
+.animating {
+  transition: 
+    width 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+    height 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+    border-radius 0.4s ease;
 }
 .container-expand {
   display: flex;

@@ -20,7 +20,8 @@ const store = useCatalogStore()
 .container {
   display: flex;
   flex-direction: column;
-
+  flex-shrink: 0;
+  overflow: hidden;
 }
 .scroll-wrapper {
   height: 100%;
@@ -28,6 +29,7 @@ const store = useCatalogStore()
   flex: 1; /* 占满剩余高度 */
   overflow-y: auto; /* 关键！内部滚动 */
   overflow-x: hidden;
+  flex-shrink: 0;
 }
 .scroll-wrapper::-webkit-scrollbar {
   width: 8px; /* 让滚动条变细 */
