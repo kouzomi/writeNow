@@ -7,7 +7,6 @@ const store = useCatalogStore()
   <div class="navi">
     <div class="state" :class="{ isChosen: store.isText }" @click="store.setViewMode('text')">文本</div>
     <div class="state" :class="{ isChosen: store.isCard }" @click="store.setViewMode('card')">卡片</div>
-    <div class="state" :class="{ isChosen: store.isMap }" @click="store.setViewMode('map')">导图</div>
   </div>
 </template>
 
@@ -34,6 +33,6 @@ const store = useCatalogStore()
   overflow: hidden;
 }
 .isChosen {
-  background: #a8cef8;
+  background: var(--bg-selected);
 }
 </style>

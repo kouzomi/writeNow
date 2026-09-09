@@ -1,34 +1,60 @@
 <script setup lang="ts">
-import { useEditor, EditorContent } from '@tiptap/vue-3'
-import StarterKit from '@tiptap/starter-kit'
+import { useChapterEditor } from './part/useChapterEditor'
+import editorFindBar from './part/editorFindBar.vue'
+import editorToolbar from './part/editorToolbar.vue'
+import editorWorkspace from './part/editorWorkspace.vue'
 
-const editor = useEditor({
-  content: "<p>I'm running Tiptap with Vue.js. 🎉</p>",
-  extensions: [StarterKit],
-})
+const {
+  editor,
+  uiTick,
+  charCount,
+  findOpen,
+  gutterWidth,
+  chapterName,
+  showEmptyHint,
+  showStartHint,
+  toggleFind,
+  closeFind,
+} = useChapterEditor()
+
+const handleUndo = () => {
+  if (!editor.value?.isEditable) return
+  editor.value.chain().focus().undo().run()
+}
+
+const handleRedo = () => {
+  if (!editor.value?.isEditable) return
+  editor.value.chain().focus().redo().run()
+}
 </script>
 
 <template>
-  <editor-content :editor="editor" class="tiptap-editor" />
+  <div class="editor-shell">
+    <editorToolbar
+      :editor="editor"
+      :tick="uiTick"
+      @toggle-find="toggleFind"
+      @undo="handleUndo"
+      @redo="handleRedo"
+    />
+    <editorFindBar v-if="findOpen" :editor="editor" @close="closeFind" />
+    <editorWorkspace
+      :editor="editor"
+      :gutter-width="gutterWidth"
+      :chapter-name="chapterName"
+      :char-count="charCount"
+      :show-empty-hint="showEmptyHint"
+      :show-start-hint="showStartHint"
+    />
+  </div>
 </template>
 
 <style scoped>
-.tiptap-editor {
-  width: 90%;
-  height: 90%;
-  background: transparent;
-  position: relative;
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-width: none;
-}
-
-/* 关键：穿透到 ProseMirror 可编辑区域 */
-.tiptap-editor :deep(.ProseMirror) {
-  outline: none !important; /* 去掉默认焦点边框 */
-  min-height: 180px;
-  font-size: 16px;
-  line-height: 1.6;
-  padding: 12px;
+.editor-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
 }
 </style>

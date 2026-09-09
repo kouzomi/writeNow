@@ -6,7 +6,7 @@ const store = useCatalogStore()
 <template>
   <div class="navigation">
     <label>目录</label>
-    <button @click="store.createCatalog">+ 章节</button>
+    <button @click="store.createCatalog">{{ store.isCard ? '+ 组' : '+ 卷' }}</button>
   </div>
 </template>
 
@@ -17,8 +17,9 @@ const store = useCatalogStore()
   height: 40px;
   flex-direction: row;
   align-items: center;
-  padding-left: 15px;
-  gap: 135px;
+  justify-content: space-between;
+  padding: 0 12px;
+  gap: 8px;
   flex-shrink: 0;
 }
 label {
@@ -29,12 +30,14 @@ label {
   font-size: 15px;
   flex-shrink: 0;
   overflow: hidden;
+  color: var(--text);
 }
 button {
   height: 28px;
   width: 75px;
   border: none;
   background: transparent;
+  color: var(--text);
   cursor: pointer;
   flex-shrink: 0;
   overflow: hidden;

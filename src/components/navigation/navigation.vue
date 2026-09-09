@@ -1,12 +1,31 @@
 <script setup lang="ts">
+import backupMenu from './part/backupMenu.vue'
+import markdownMenu from './part/markdownMenu.vue'
+import settingsMenu from './part/settingsMenu.vue'
+import searchBar from './part/searchBar.vue'
+import writeNowLogo from '@/assets/writenow-logo.png'
+import { useSettingsStore } from '@/stores/settings'
 
+const settings = useSettingsStore()
 </script>
 
 <template>
-    <div class="navigation">
-        <image>icon</image>
-        <div class="button-bar">button</div>
+  <div class="navigation">
+    <div class="icon">
+      <img
+        class="brand-logo"
+        :class="{ 'is-dark': settings.colorScheme === 'dark' }"
+        :src="writeNowLogo"
+        alt="writeNow"
+      />
     </div>
+    <div class="button-bar">
+      <searchBar />
+      <markdownMenu />
+      <backupMenu />
+      <settingsMenu />
+    </div>
+  </div>
 </template>
 
 <style scoped>
@@ -15,18 +34,32 @@
   display: flex;
   height: 70px;
   width: 100%;
+  box-sizing: border-box;
   flex-direction: row;
   align-items: center;
-  border-bottom: solid 2px black;
-  padding: 0 12px;
-  background-color: #F5F7FA;
+  justify-content: space-between;
+  border-bottom: solid 2px var(--border);
+  padding: 0 20px;
+  background-color: var(--bg-chrome);
   flex-shrink: 0;
+  gap: 16px;
+}
+.icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.brand-logo {
+  height: 36px;
+  width: auto;
+  display: block;
+}
+.brand-logo.is-dark {
+  filter: invert(1);
 }
 .button-bar {
-    margin-right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-image {
-    margin-left: 20px;
-}
-
 </style>

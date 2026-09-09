@@ -1,12 +1,24 @@
 <script setup lang="ts">
+import { watch } from 'vue'
 import notebook from './components/notebook/notebook.vue'
 import sideMenue from './components/sideMenue/sideMenue.vue'
 import navigation from './components/navigation/navigation.vue'
 import editor from './components/editor/editor.vue'
+import { useSettingsStore } from './stores/settings'
+
+const settings = useSettingsStore()
+
+watch(
+  () => settings.colorScheme,
+  (scheme) => {
+    document.documentElement.dataset.theme = scheme
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
-  <notebook></notebook>
+  <notebook v-if="settings.showNotebook"></notebook>
   <navigation></navigation>
   <editor>
     <side-menue></side-menue>
@@ -15,13 +27,12 @@ import editor from './components/editor/editor.vue'
 
 <style>
 #app {
-  /* 确保占据全屏 */
   height: 100dvh;
-  width: 100vw; /* 修正单位 */
-
-  /* 改为垂直排列 */
+  width: 100%;
   display: flex;
   flex-direction: column;
-  overflow-x: hidden;
+  overflow: hidden;
+  background: var(--bg-app);
+  color: var(--text);
 }
 </style>

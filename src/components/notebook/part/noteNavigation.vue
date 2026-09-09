@@ -1,27 +1,30 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useNotebookStore } from '@/stores/notebook'
+import { useNotebookDrag } from './useNotebookDrag'
 
 const store = useNotebookStore()
-const movableTip = computed(() => store.allowDrag ? '已解锁' : '已固定')
+const { handlePointerDown } = useNotebookDrag()
+const movableTip = computed(() => (store.allowDrag ? '已解锁' : '已固定'))
 
-const handleToggleDrag = () =>{
-  console.log(store.allowDrag)
+const handleToggleDrag = () => {
   store.setAllowDrag(!store.allowDrag)
-  console.log(store.allowDrag)
 }
-const handleToggleClose = () =>{
+
+const handleToggleClose = () => {
   store.toggleExpand(false)
-  //store.allowDrag = true
 }
 </script>
 
 <template>
-  <div class="navigation">
-    <button @click="handleToggleClose">关闭</button>
-    <button @click="store.clearContent">清空</button>
-    <button>主题</button>
-    <button @click="handleToggleDrag">{{ movableTip }}</button>
+  <div
+    class="navigation"
+    :class="{ movable: store.allowDrag }"
+    @pointerdown="handlePointerDown"
+  >
+    <button @pointerdown.stop @click="handleToggleClose">关闭</button>
+    <button @pointerdown.stop @click="store.clearContent">清空</button>
+    <button @pointerdown.stop @click="handleToggleDrag">{{ movableTip }}</button>
   </div>
 </template>
 
@@ -32,10 +35,11 @@ button {
   border: none;
   border-radius: 14px;
   background: transparent;
+  color: var(--text);
   cursor: pointer;
   font-size: 13px;
   overflow: hidden;
-  flex-shrink: 0
+  flex-shrink: 0;
 }
 .navigation {
   position: relative;
@@ -45,9 +49,15 @@ button {
   flex-direction: row-reverse;
   align-items: center;
   gap: 10px;
-  border-bottom: solid 1px #ddd;
+  border-bottom: solid 1px var(--border-soft);
   padding: 0 12px;
-  background: #f5f5f5;
+  background: var(--bg-chrome);
   flex-shrink: 0;
+  touch-action: none;
+  user-select: none;
+  cursor: pointer;
+}
+.navigation.movable {
+  cursor: pointer;
 }
 </style>

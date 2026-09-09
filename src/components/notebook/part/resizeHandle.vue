@@ -56,7 +56,7 @@ const startResize = (e:PointerEvent) =>{
   bottom: 0;
   width: 20px;
   height: 20px;
-  background: #f5f5f5;
+  background: var(--bg-chrome);
   cursor: default; /* 标准的右下角缩放光标 */
   z-index: 52; /* 必须在 drag-layer 上面 */
   border-radius: 0 4px 0 0; /* 可选，美观 */
