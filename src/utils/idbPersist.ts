@@ -97,9 +97,9 @@ export const flushPersistStorage = async () => {
 const migrateFromLocalStorage = async () => {
   let copied = false
   for (const key of PINIA_KEYS) {
-    if (memory.has(key)) continue
     const fromLs = localStorage.getItem(key)
     if (fromLs == null) continue
+    // pagehide mirrors here first; prefer it over a possibly stale/incomplete IDB read.
     memory.set(key, fromLs)
     pending.set(key, fromLs)
     copied = true
@@ -109,13 +109,25 @@ const migrateFromLocalStorage = async () => {
   for (const key of PINIA_KEYS) localStorage.removeItem(key)
 }
 
+const mirrorToLocalStorage = () => {
+  for (const key of PINIA_KEYS) {
+    const value = pending.get(key) ?? memory.get(key)
+    if (value != null) localStorage.setItem(key, value)
+  }
+}
+
 const bindFlush = () => {
   if (flushBound) return
   flushBound = true
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') void flushPersistStorage()
+    if (document.visibilityState === 'hidden') {
+      mirrorToLocalStorage()
+      void flushPersistStorage()
+    }
   })
   window.addEventListener('pagehide', () => {
+    // Unload can abort the async IDB write; mirror sync to localStorage first.
+    mirrorToLocalStorage()
     void flushPersistStorage()
   })
 }

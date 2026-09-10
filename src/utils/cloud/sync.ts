@@ -155,6 +155,12 @@ const reconcile = async () => {
       return
     }
 
+    // Local wipe / failed hydrate: never push empty over a non-empty remote.
+    if (localEmpty && backupHasContent(remote.backup)) {
+      applyRemote(remote)
+      return
+    }
+
     if (neverSynced) {
       if (localEmpty) {
         applyRemote(remote)
@@ -304,7 +310,14 @@ export const startCloudSync = async () => {
     settings.cloudAccountName = oneDriveAdapter.getAccountName()
   }
 
-  if (settings.cloudEnabled && oneDriveAdapter.isSignedIn()) {
+  const signedIn = oneDriveAdapter.isSignedIn()
+  // Same-browser refresh can lose IndexedDB while MSAL (localStorage) remains.
+  // If the library is empty, recover the cloud session and pull.
+  if (signedIn && !settings.cloudEnabled && !hasWritableContent()) {
+    settings.cloudEnabled = true
+  }
+
+  if (settings.cloudEnabled && signedIn) {
     settings.cloudAccountName = oneDriveAdapter.getAccountName()
     cloudSync.needsReauth = false
     await reconcile()
