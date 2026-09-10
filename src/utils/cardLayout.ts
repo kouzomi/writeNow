@@ -5,6 +5,9 @@ export const CARD_MIN_WIDTH = 160
 export const CARD_MIN_HEIGHT = 120
 export const CARD_CANVAS_WIDTH = 2400
 export const CARD_CANVAS_HEIGHT = 1600
+export const CARD_ZOOM_MIN = 0.4
+export const CARD_ZOOM_MAX = 2
+export const CARD_ZOOM_STEP = 0.1
 
 export const defaultCardPos = (index: number) => ({
   x: 40 + (index % 20) * 24,
@@ -77,3 +80,15 @@ export const boxAnchorToward = (from: CardBox, toward: CardBox) => {
 
 export const pointInBox = (x: number, y: number, box: CardBox) =>
   x >= box.x && x <= box.x + box.width && y >= box.y && y <= box.y + box.height
+
+export const boxesOverlap = (a: CardBox, b: CardBox) =>
+  a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y
+
+export const normalizeRect = (x1: number, y1: number, x2: number, y2: number): CardBox => {
+  const x = Math.min(x1, x2)
+  const y = Math.min(y1, y2)
+  return { x, y, width: Math.abs(x2 - x1), height: Math.abs(y2 - y1) }
+}
+
+export const clampZoom = (value: number) =>
+  Math.min(CARD_ZOOM_MAX, Math.max(CARD_ZOOM_MIN, Math.round(value * 100) / 100))

@@ -1,6 +1,32 @@
 import { useNotebookStore } from '@/stores/notebook'
+import { useSettingsStore } from '@/stores/settings'
 import { useCatalogStore, type LibrarySnapshot } from '@/stores/shelf'
 import { downloadTextFile, pickTextFile } from '@/utils/fileDownload'
+
+export const BACKUP_STALE_MS = 3 * 24 * 60 * 60 * 1000
+
+export const isBackupStale = (lastBackupAt: number | null | undefined) => {
+  if (lastBackupAt == null) return true
+  return Date.now() - lastBackupAt >= BACKUP_STALE_MS
+}
+
+export const formatBackupAt = (lastBackupAt: number | null | undefined) => {
+  if (lastBackupAt == null) return '从未导出'
+  return new Date(lastBackupAt).toLocaleString()
+}
+
+export const formatCloudSyncAt = (lastCloudSyncAt: number | null | undefined) => {
+  if (lastCloudSyncAt == null) return '从未同步'
+  return new Date(lastCloudSyncAt).toLocaleString()
+}
+
+export const hasWritableContent = () => {
+  const catalog = useCatalogStore()
+  const notebook = useNotebookStore()
+  if (catalog.hasCatalogContent) return true
+  const text = notebook.textContent.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim()
+  return text.length > 0
+}
 
 export type LibraryBackup = LibrarySnapshot & {
   notebookContent?: string
@@ -36,15 +62,42 @@ export const isLibraryBackup = (value: unknown): value is LibraryBackup => {
   )
 }
 
-export const exportLibraryBackup = () => {
+export const libraryContentKey = (backup: LibraryBackup) =>
+  JSON.stringify({
+    version: backup.version,
+    textCatalogList: backup.textCatalogList,
+    cardCatalogList: backup.cardCatalogList,
+    nextId: backup.nextId,
+    notebookContent: backup.notebookContent ?? '',
+  })
+
+export const backupHasContent = (backup: LibraryBackup) => {
+  if (backup.textCatalogList.length > 0 || backup.cardCatalogList.length > 0) return true
+  const text = (backup.notebookContent ?? '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim()
+  return text.length > 0
+}
+
+export const packLibraryBackup = (): LibraryBackup => {
   const catalog = useCatalogStore()
   const notebook = useNotebookStore()
-  const backup: LibraryBackup = {
+  return {
     ...catalog.getLibrarySnapshot(),
     notebookContent: notebook.textContent,
   }
+}
+
+export const applyLibraryBackup = (backup: LibraryBackup) => {
+  const catalog = useCatalogStore()
+  const notebook = useNotebookStore()
+  catalog.replaceLibrary(backup)
+  notebook.textContent = typeof backup.notebookContent === 'string' ? backup.notebookContent : ''
+}
+
+export const exportLibraryBackup = () => {
+  const backup = packLibraryBackup()
   const stamp = new Date().toISOString().slice(0, 10)
   downloadTextFile(`writeNow-备份-${stamp}.json`, JSON.stringify(backup, null, 2), 'application/json;charset=utf-8')
+  useSettingsStore().markBackupNow()
 }
 
 export const importLibraryBackup = async () => {
@@ -59,11 +112,7 @@ export const importLibraryBackup = async () => {
   }
   if (!isLibraryBackup(parsed)) return 'invalid' as const
 
-  const catalog = useCatalogStore()
-  const notebook = useNotebookStore()
-  catalog.replaceLibrary(parsed)
-  if (typeof parsed.notebookContent === 'string') {
-    notebook.textContent = parsed.notebookContent
-  }
+  applyLibraryBackup(parsed)
+  useSettingsStore().markBackupNow()
   return 'ok' as const
 }

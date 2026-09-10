@@ -3,6 +3,7 @@ import backupMenu from './part/backupMenu.vue'
 import markdownMenu from './part/markdownMenu.vue'
 import settingsMenu from './part/settingsMenu.vue'
 import searchBar from './part/searchBar.vue'
+import syncStatus from './part/syncStatus.vue'
 import writeNowLogo from '@/assets/writenow-logo.png'
 import { useSettingsStore } from '@/stores/settings'
 
@@ -23,6 +24,7 @@ const settings = useSettingsStore()
       <searchBar />
       <markdownMenu />
       <backupMenu />
+      <syncStatus />
       <settingsMenu />
     </div>
   </div>

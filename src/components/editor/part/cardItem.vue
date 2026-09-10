@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { EditorContent } from '@tiptap/vue-3'
 import type { Editor } from '@tiptap/vue-3'
 import { useCatalogStore, type Chapter } from '@/stores/shelf'
@@ -9,16 +9,17 @@ const props = defineProps<{
   catalogId: number
   chapter: Chapter
   editor?: Editor
+  chosen?: boolean
 }>()
 
 const emit = defineEmits<{
+  select: [event: PointerEvent]
   dragstart: [event: PointerEvent]
   resizestart: [event: PointerEvent]
   linkstart: [event: PointerEvent]
 }>()
 
 const store = useCatalogStore()
-const rootRef = ref<HTMLElement | null>(null)
 const editing = ref(false)
 const draftName = ref('')
 const nameInput = ref<HTMLInputElement | null>(null)
@@ -27,7 +28,7 @@ const cardWidth = computed(() => props.chapter.size?.width ?? CARD_WIDTH)
 const cardHeight = computed(() =>
   props.chapter.collapsed ? CARD_TITLE_HEIGHT : (props.chapter.size?.height ?? CARD_HEIGHT),
 )
-const selected = computed(() => store.currentChapterId === props.chapter.id)
+const selected = computed(() => props.chosen ?? store.currentChapterId === props.chapter.id)
 const previewText = computed(() => {
   const text = props.chapter.content.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim()
   return text || '空白卡片'
@@ -56,10 +57,8 @@ const handleDelete = () => {
   store.deleteChapter(props.catalogId, props.chapter.id)
 }
 
-const onSelect = () => {
-  const already = store.currentChapterId === props.chapter.id
-  store.selectChapter(props.chapter.id)
-  if (!already) store.bringChapterToFront(props.chapter.id)
+const onSelect = (event: PointerEvent) => {
+  emit('select', event)
 }
 
 const onTitlePointerDown = (event: PointerEvent) => {
@@ -79,17 +78,10 @@ const onLinkPointerDown = (event: PointerEvent) => {
 const toggleCollapsed = () => {
   store.toggleChapterCollapsed(props.chapter.id)
 }
-
-watch(selected, async (value) => {
-  if (!value) return
-  await nextTick()
-  rootRef.value?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-})
 </script>
 
 <template>
   <div
-    ref="rootRef"
     class="card"
     :class="{ isChosen: selected, isCollapsed: chapter.collapsed }"
     :style="{
@@ -102,7 +94,7 @@ watch(selected, async (value) => {
     @pointerdown.stop="onSelect"
     @dblclick.stop
   >
-    <div class="title-bar" @pointerdown="onTitlePointerDown" @dblclick.stop="startRename">
+    <div class="title-bar" @pointerdown.stop="onTitlePointerDown" @dblclick.stop="startRename">
       <input
         v-if="editing"
         ref="nameInput"
@@ -124,11 +116,12 @@ watch(selected, async (value) => {
         type="button"
         class="fold"
         :title="chapter.collapsed ? '展开' : '最小化'"
+        @pointerdown.stop
         @click.stop="toggleCollapsed"
       >
         {{ chapter.collapsed ? '□' : '–' }}
       </button>
-      <button type="button" class="remove" @click.stop="handleDelete">×</button>
+      <button type="button" class="remove" @pointerdown.stop @click.stop="handleDelete">×</button>
     </div>
     <div v-if="!chapter.collapsed" class="body">
       <editor-content v-if="selected && editor" :editor="editor" class="card-editor" />

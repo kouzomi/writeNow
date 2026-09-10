@@ -84,6 +84,10 @@ export const useCatalogStore = defineStore(
       return textCatalogCount.value
     })
 
+    const hasCatalogContent = computed(
+      () => textCatalogList.value.length > 0 || cardCatalogList.value.length > 0,
+    )
+
     const getCatalogById = computed(() => {
       return (id: number) => currentCatalogList.value.find((c) => c.id === id)
     })
@@ -136,9 +140,15 @@ export const useCatalogStore = defineStore(
       return max + 1
     }
 
+    type CardPos = { x: number; y: number }
+    type CardSize = { width: number; height: number }
     type CardBoardAction =
       | { type: 'addCard'; catalogId: number; chapter: Chapter }
       | { type: 'addLink'; catalogId: number; from: number; to: number }
+      | { type: 'deleteCards'; catalogId: number; chapters: Chapter[]; links: CardLink[] }
+      | { type: 'moveCards'; catalogId: number; items: { id: number; from: CardPos; to: CardPos }[] }
+      | { type: 'resizeCard'; catalogId: number; id: number; from: CardSize; to: CardSize }
+      | { type: 'removeLink'; catalogId: number; from: number; to: number }
 
     const undoStack = ref<CardBoardAction[]>([])
     const redoStack = ref<CardBoardAction[]>([])
@@ -208,6 +218,19 @@ export const useCatalogStore = defineStore(
       return lastBoardAt.value >= lastEditAt.value
     }
 
+    const removeChaptersNow = (catalogId: number, chapterIds: number[]) => {
+      const target = findCatalogAnywhere(catalogId)
+      if (!target) return
+      const idSet = new Set(chapterIds)
+      target.charpterList = target.charpterList.filter((chapter) => !idSet.has(chapter.id))
+      if (target.links) {
+        target.links = target.links.filter((link) => !idSet.has(link.from) && !idSet.has(link.to))
+      }
+      if (currentChapterId.value != null && idSet.has(currentChapterId.value)) {
+        currentChapterId.value = null
+      }
+    }
+
     const undoBoard = () => {
       const action = undoStack.value.pop()
       if (!action) return
@@ -215,9 +238,18 @@ export const useCatalogStore = defineStore(
       if (action.type === 'addCard') {
         const current = findChapter(action.chapter.id)
         if (current) action.chapter = cloneChapter(current)
-        deleteChapter(action.catalogId, action.chapter.id)
-      } else {
+        removeChaptersNow(action.catalogId, [action.chapter.id])
+      } else if (action.type === 'addLink') {
         dropLinkFromCatalog(action.catalogId, action.from, action.to)
+      } else if (action.type === 'deleteCards') {
+        for (const chapter of action.chapters) insertChapterSnapshot(action.catalogId, chapter)
+        for (const link of action.links) addLinkToCatalog(action.catalogId, link.from, link.to)
+      } else if (action.type === 'moveCards') {
+        for (const item of action.items) updateChapterPos(item.id, item.from)
+      } else if (action.type === 'removeLink') {
+        addLinkToCatalog(action.catalogId, action.from, action.to)
+      } else {
+        updateChapterSize(action.id, action.from)
       }
       applyingHistory = false
       redoStack.value.push(action)
@@ -230,8 +262,19 @@ export const useCatalogStore = defineStore(
       applyingHistory = true
       if (action.type === 'addCard') {
         insertChapterSnapshot(action.catalogId, action.chapter)
-      } else {
+      } else if (action.type === 'addLink') {
         addLinkToCatalog(action.catalogId, action.from, action.to)
+      } else if (action.type === 'deleteCards') {
+        removeChaptersNow(
+          action.catalogId,
+          action.chapters.map((chapter) => chapter.id),
+        )
+      } else if (action.type === 'moveCards') {
+        for (const item of action.items) updateChapterPos(item.id, item.to)
+      } else if (action.type === 'removeLink') {
+        dropLinkFromCatalog(action.catalogId, action.from, action.to)
+      } else {
+        updateChapterSize(action.id, action.to)
       }
       applyingHistory = false
       undoStack.value.push(action)
@@ -363,6 +406,19 @@ export const useCatalogStore = defineStore(
       chapter.size = clampCardSize(size.width, size.height, chapter.pos)
     }
 
+    const recordMoveCards = (items: { id: number; from: CardPos; to: CardPos }[]) => {
+      const catalogId = currentCatalogId.value
+      if (catalogId == null || items.length === 0) return
+      recordBoardAction({ type: 'moveCards', catalogId, items })
+    }
+
+    const recordResizeCard = (id: number, from: CardSize, to: CardSize) => {
+      const catalogId = currentCatalogId.value
+      if (catalogId == null) return
+      if (from.width === to.width && from.height === to.height) return
+      recordBoardAction({ type: 'resizeCard', catalogId, id, from, to })
+    }
+
     const toggleChapterCollapsed = (id: number) => {
       const chapter = findChapter(id)
       if (!chapter) return
@@ -380,6 +436,7 @@ export const useCatalogStore = defineStore(
       const catalogId = currentCatalogId.value
       if (catalogId == null) return
       dropLinkFromCatalog(catalogId, from, to)
+      recordBoardAction({ type: 'removeLink', catalogId, from, to })
     }
 
     const bringChapterToFront = (id: number) => {
@@ -422,16 +479,26 @@ export const useCatalogStore = defineStore(
       }
     }
 
-    const deleteChapter = (catalogId: number, chapterId: number) => {
-      const target = currentCatalogList.value.find((c) => c.id === catalogId)
+    const deleteChapters = (catalogId: number, chapterIds: number[]) => {
+      const target = findCatalogAnywhere(catalogId)
       if (!target) return
-      target.charpterList = target.charpterList.filter((ch) => ch.id !== chapterId)
-      if (target.links) {
-        target.links = target.links.filter((link) => link.from !== chapterId && link.to !== chapterId)
+      const idSet = new Set(chapterIds)
+      const chapters = target.charpterList.filter((chapter) => idSet.has(chapter.id)).map(cloneChapter)
+      if (chapters.length === 0) return
+      const links = (target.links ?? [])
+        .filter((link) => idSet.has(link.from) || idSet.has(link.to))
+        .map((link) => ({ ...link }))
+      if (isCard.value) {
+        recordBoardAction({ type: 'deleteCards', catalogId, chapters, links })
       }
-      if (currentChapterId.value === chapterId) {
-        currentChapterId.value = null
-      }
+      removeChaptersNow(
+        catalogId,
+        chapters.map((chapter) => chapter.id),
+      )
+    }
+
+    const deleteChapter = (catalogId: number, chapterId: number) => {
+      deleteChapters(catalogId, [chapterId])
     }
 
     const toggleMenueExpand = () => {
@@ -464,6 +531,8 @@ export const useCatalogStore = defineStore(
       textCatalogList.value = snapshot.textCatalogList
       cardCatalogList.value = snapshot.cardCatalogList
       nextId.value = snapshot.nextId
+      undoStack.value = []
+      redoStack.value = []
       repairNextId()
       clearSelectionIfMissing()
     }
@@ -519,6 +588,7 @@ export const useCatalogStore = defineStore(
       isCard,
       currentCatalogList,
       currentCount,
+      hasCatalogContent,
       currentChapter,
       currentCatalog,
       getCatalogById,
@@ -543,6 +613,9 @@ export const useCatalogStore = defineStore(
       renameChapter,
       deleteCatalog,
       deleteChapter,
+      deleteChapters,
+      recordMoveCards,
+      recordResizeCard,
       markEditorEdit,
       canUndoBoard,
       canRedoBoard,
@@ -564,7 +637,7 @@ export const useCatalogStore = defineStore(
   },
   {
     persist: {
-      omit: ['isMenueResizing', 'canUndoBoard', 'canRedoBoard'],
+      omit: ['isMenueResizing', 'canUndoBoard', 'canRedoBoard', 'hasCatalogContent'],
       afterHydrate: (ctx) => {
         ctx.store.repairNextId()
         ctx.store.clearSelectionIfMissing()

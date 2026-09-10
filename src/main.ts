@@ -1,18 +1,22 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
+import { createPersistedState } from 'pinia-plugin-persistedstate'
 
 import App from './App.vue'
 import router from './router'
+import { persistStorage, preparePersistStorage } from './utils/idbPersist'
 import './styles/theme.css'
 
-const app = createApp(App)
+const bootstrap = async () => {
+  await preparePersistStorage()
 
-const pinia = createPinia()
-pinia.use(piniaPluginPersistedstate)
+  const app = createApp(App)
+  const pinia = createPinia()
+  pinia.use(createPersistedState({ storage: persistStorage }))
 
-app.use(pinia)
-app.use(router)
+  app.use(pinia)
+  app.use(router)
+  app.mount('#app')
+}
 
-app.mount('#app')
-
+void bootstrap()
