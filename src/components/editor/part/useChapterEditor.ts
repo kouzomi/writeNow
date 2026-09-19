@@ -2,6 +2,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useEditor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import { useCatalogStore } from '@/stores/shelf'
+import { isMobile } from '@/utils/mobile'
 
 export const useChapterEditor = () => {
   const store = useCatalogStore()
@@ -78,7 +79,10 @@ export const useChapterEditor = () => {
   onMounted(() => window.addEventListener('keydown', onFindKeydown))
   onUnmounted(() => window.removeEventListener('keydown', onFindKeydown))
 
-  const gutterWidth = computed(() => (store.isMenueExpanded ? store.currentWidth : 0))
+  const gutterWidth = computed(() => {
+    if (isMobile.value) return 0
+    return store.isMenueExpanded ? store.currentWidth : 0
+  })
   const chapterName = computed(() => store.currentChapter?.name || '未选择章节')
   const showEmptyHint = computed(() => store.currentChapterId == null)
   const showStartHint = computed(

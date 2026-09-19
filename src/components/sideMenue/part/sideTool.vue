@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import { useCatalogStore } from '@/stores/shelf'
+import saveTheCatWizard from '@/components/guide/saveTheCatWizard.vue'
+
 const store = useCatalogStore()
 </script>
 
 <template>
   <div class="navigation">
     <label>目录</label>
-    <button @click="store.createCatalog">{{ store.isCard ? '+ 组' : '+ 卷' }}</button>
+    <div class="actions">
+      <saveTheCatWizard v-if="store.isCard" />
+      <button type="button" @click="store.createCatalog">{{ store.isCard ? '+ 组' : '+ 卷' }}</button>
+    </div>
   </div>
 </template>
 
@@ -32,6 +37,12 @@ label {
   overflow: hidden;
   color: var(--text);
 }
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
 button {
   height: 28px;
   width: 75px;
@@ -42,5 +53,21 @@ button {
   flex-shrink: 0;
   overflow: hidden;
   font-size: 15px;
+}
+
+@media (max-width: 768px) {
+  .navigation {
+    padding: 0 8px;
+    gap: 4px;
+  }
+  label {
+    width: auto;
+    font-size: 14px;
+  }
+  button {
+    width: auto;
+    padding: 0 6px;
+    font-size: 14px;
+  }
 }
 </style>

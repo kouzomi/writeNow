@@ -83,4 +83,22 @@ defineExpose({ close })
   border: 1px solid var(--border);
   text-align: center;
 }
+
+@media (max-width: 768px) {
+  .menu > button {
+    height: 30px;
+    padding: 0 10px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .menu-list {
+    position: fixed;
+    top: auto;
+    right: 12px;
+    left: 12px;
+    min-width: 0;
+    max-height: min(60dvh, 420px);
+    overflow: auto;
+  }
+}
 </style>

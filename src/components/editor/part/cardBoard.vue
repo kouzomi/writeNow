@@ -40,9 +40,25 @@ const {
 <template>
   <div class="board">
     <div class="board-bar">
-      <span class="volume">{{ catalog?.name || '未选择组' }}</span>
+      <nav class="crumb" aria-label="卡片层级">
+        <button
+          type="button"
+          class="crumb-item"
+          :disabled="!catalog"
+          @click="store.setBoardParent(null)"
+        >
+          {{ catalog?.name || '未选择组' }}
+        </button>
+        <template v-for="item in store.boardBreadcrumb" :key="item.id">
+          <span class="crumb-sep">/</span>
+          <button type="button" class="crumb-item" @click="store.setBoardParent(item.id)">
+            {{ item.name }}
+          </button>
+        </template>
+      </nav>
       <span class="count">{{ catalog ? `${cards.length} 张卡片` : '' }}</span>
-      <span class="hint">Ctrl+滚轮缩放 · 中键拖动画布</span>
+      <span class="hint desktop-only">Ctrl+滚轮缩放 · 中键拖动画布 · 卡片可进入子事件</span>
+      <span class="hint mobile-only">双指滚动画布 · ↘ 进入子事件</span>
       <div class="zoom">
         <button type="button" title="缩小" @click="nudgeZoom(-1)">−</button>
         <button type="button" class="zoom-label" title="重置缩放" @click="resetZoom">{{ zoomLabel }}</button>
@@ -166,11 +182,36 @@ const {
   background: var(--bg-chrome);
   flex-shrink: 0;
 }
-.volume {
+.crumb {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 42%;
+  overflow: hidden;
+  gap: 4px;
+}
+.crumb-item {
+  min-width: 0;
+  max-width: 140px;
+  height: 24px;
+  padding: 0 6px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
   font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.crumb-item:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.crumb-sep {
+  color: var(--text-hint);
+  font-size: 12px;
+  flex-shrink: 0;
 }
 .count,
 .hint {
@@ -274,5 +315,47 @@ const {
   color: var(--text-hint);
   font-size: 15px;
   pointer-events: none;
+}
+.mobile-only {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .board-bar {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 36px;
+    gap: 6px 8px;
+    padding: 6px 10px;
+  }
+  .crumb {
+    max-width: 100%;
+    flex: 1 1 100%;
+  }
+  .crumb-item {
+    max-width: 110px;
+  }
+  .desktop-only {
+    display: none;
+  }
+  .mobile-only {
+    display: inline;
+  }
+  .hint {
+    flex: 1 1 auto;
+  }
+  .zoom {
+    margin-left: 0;
+  }
+  .zoom button,
+  .board-bar > button {
+    height: 30px;
+    min-width: 36px;
+  }
+  .empty-hint {
+    padding: 0 20px;
+    text-align: center;
+    transform: none;
+  }
 }
 </style>

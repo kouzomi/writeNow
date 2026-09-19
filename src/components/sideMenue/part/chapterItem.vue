@@ -2,11 +2,16 @@
 import { computed, nextTick, ref } from 'vue'
 import { useCatalogStore } from '@/stores/shelf'
 import type { Chapter } from '@/stores/shelf'
+import { isMobile } from '@/utils/mobile'
 
-const props = defineProps<{
-  catalogId: number
-  chapter: Chapter
-}>()
+const props = withDefaults(
+  defineProps<{
+    catalogId: number
+    chapter: Chapter
+    depth?: number
+  }>(),
+  { depth: 0 },
+)
 
 const store = useCatalogStore()
 const editing = ref(false)
@@ -17,6 +22,10 @@ const previewText = computed(() => {
   const text = props.chapter.content.replace(/<[^>]+>/g, '').trim()
   return text.slice(0, 24) || '尚未开始写作'
 })
+const kids = computed(() =>
+  store.isCard ? store.childCount(props.chapter.id) : 0,
+)
+const titlePad = computed(() => 15 + props.depth * 12)
 
 const startRename = async () => {
   editing.value = true
@@ -37,7 +46,10 @@ const cancelRename = () => {
 }
 
 const handleDelete = () => {
-  const message = store.isCard ? '确定删除这张卡片？' : '确定删除这个章节？'
+  const extra = store.isCard && kids.value > 0 ? `（含 ${kids.value} 张子事件及更深层）` : ''
+  const message = store.isCard
+    ? `确定删除这张卡片${extra}？`
+    : '确定删除这个章节？'
   if (!confirm(message)) return
   store.deleteChapter(props.catalogId, props.chapter.id)
 }
@@ -45,6 +57,13 @@ const handleDelete = () => {
 const onSelect = () => {
   store.selectChapter(props.chapter.id)
   if (store.isCard) store.bringChapterToFront(props.chapter.id)
+  if (isMobile.value) store.isMenueExpanded = false
+}
+
+const enterChildren = () => {
+  store.selectCatalog(props.catalogId)
+  store.enterCardChildren(props.chapter.id)
+  if (isMobile.value) store.isMenueExpanded = false
 }
 </script>
 
@@ -66,9 +85,21 @@ const onSelect = () => {
         @keydown.escape.prevent="cancelRename"
         @blur="commitRename"
       />
-      <label v-else class="title">{{ chapter.name }}</label>
+      <label v-else class="title" :style="{ paddingLeft: titlePad + 'px' }">
+        {{ chapter.name }}
+        <span v-if="kids > 0" class="kids">{{ kids }}</span>
+      </label>
       <label v-if="store.isText" class="summary">{{ previewText }}</label>
     </div>
+    <button
+      v-if="store.isCard"
+      class="enter"
+      type="button"
+      title="进入子事件"
+      @click.stop="enterChildren"
+    >
+      ↘
+    </button>
     <button class="remove" @click.stop="handleDelete">×</button>
   </div>
 </template>
@@ -98,10 +129,14 @@ const onSelect = () => {
   justify-content: center;
 }
 .title {
-  padding-left: 15px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.kids {
+  margin-left: 6px;
+  color: var(--text-hint);
+  font-size: 11px;
 }
 .summary {
   font-size: 12px;
@@ -123,13 +158,18 @@ label {
   flex-shrink: 0;
   overflow: hidden;
 }
+.enter,
 .remove {
   height: 28px;
   width: 25px;
   border: none;
   background: transparent;
   cursor: pointer;
-  font-size: 18px;
+  font-size: 14px;
   flex-shrink: 0;
+  color: var(--text-muted);
+}
+.remove {
+  font-size: 18px;
 }
 </style>

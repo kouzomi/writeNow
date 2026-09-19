@@ -103,4 +103,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown, true))
 .gutter.instant {
   transition: none;
 }
+
+@media (max-width: 768px) {
+  .gutter {
+    display: none;
+  }
+}
 </style>

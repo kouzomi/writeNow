@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isMobile } from '@/utils/mobile'
 import navigation from './noteNavigation.vue'
 import resizeHandle from './resizeHandle.vue'
 import texteditor from './texteditor.vue'
@@ -9,7 +10,7 @@ import texteditor from './texteditor.vue'
     <navigation />
     <div class="editor-body">
       <texteditor></texteditor>
-      <resizeHandle />
+      <resizeHandle v-if="!isMobile" />
     </div>
   </div>
 </template>

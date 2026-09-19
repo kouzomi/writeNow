@@ -42,3 +42,19 @@ body,
   background: var(--bg-app);
   color: var(--text);
 }
+
+/* 移动端：减少误触缩放、适配安全区 */
+html.is-mobile,
+html.is-mobile body {
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --nav-height: 52px;
+    --mobile-pad: max(12px, env(safe-area-inset-left));
+    --mobile-pad-right: max(12px, env(safe-area-inset-right));
+  }
+}

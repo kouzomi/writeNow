@@ -74,4 +74,22 @@ button:disabled {
   cursor: default;
   opacity: 0.6;
 }
+
+@media (max-width: 768px) {
+  .overlay {
+    padding: 12px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  .dialog {
+    max-width: none;
+    width: 100%;
+  }
+  .actions {
+    flex-direction: column;
+  }
+  button {
+    height: 36px;
+    width: 100%;
+  }
+}
 </style>

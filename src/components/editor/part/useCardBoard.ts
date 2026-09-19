@@ -35,7 +35,7 @@ export const useCardBoard = () => {
   const viewByCatalog = new Map<number, { scale: number; left: number; top: number }>()
 
   const catalog = computed(() => store.currentCatalog)
-  const cards = computed(() => catalog.value?.charpterList ?? [])
+  const cards = computed(() => store.boardChapters)
   const zoomLabel = computed(() => `${Math.round(scale.value * 100)}%`)
   const worldWidth = computed(() => CARD_CANVAS_WIDTH * scale.value)
   const worldHeight = computed(() => CARD_CANVAS_HEIGHT * scale.value)
@@ -55,11 +55,13 @@ export const useCardBoard = () => {
   }
 
   watch(
-    () => store.currentCatalogId,
-    (id, prev) => {
+    () => [store.currentCatalogId, store.boardParentId] as const,
+    (idPair, prev) => {
+      const id = idPair[0]
+      const prevId = prev?.[0]
       const viewport = viewportRef.value
-      if (prev != null) {
-        viewByCatalog.set(prev, {
+      if (prevId != null) {
+        viewByCatalog.set(prevId, {
           scale: scale.value,
           left: viewport?.scrollLeft ?? 0,
           top: viewport?.scrollTop ?? 0,
@@ -113,7 +115,7 @@ export const useCardBoard = () => {
   )
 
   watch(
-    () => [store.currentCatalogId, cards.value.length] as const,
+    () => [store.currentCatalogId, store.boardParentId, cards.value.length] as const,
     () => {
       if (store.currentCatalogId == null || !store.isCard) return
       store.ensureCardLayout(store.currentCatalogId)

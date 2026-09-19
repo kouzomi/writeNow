@@ -9,11 +9,28 @@ import {
 } from '@/utils/cardLayout'
 import { clampSidebarWidth, SIDEBAR_DEFAULT_WIDTH } from '@/utils/sidebarLayout'
 import { searchLibrary } from '@/utils/librarySearch'
+import {
+  breadcrumbFor,
+  childCountOf,
+  childrenOf,
+  collectSubtreeIds,
+  flattenCardTree,
+  sameCardParent,
+} from '@/utils/cardHierarchy'
+import {
+  SAVE_THE_CAT_BEATS,
+  buildSaveTheCatBeatContent,
+  catalogNameFromSaveTheCat,
+  saveTheCatCardPos,
+  type SaveTheCatAnswers,
+} from '@/utils/saveTheCat'
 
 export interface Chapter {
   id: number
   name: string
   content: string
+  /** 卡片子事件：指向父卡片 id；缺省/undefined 表示顶层 */
+  parentId?: number
   pos?: { x: number; y: number }
   size?: { width: number; height: number }
   zIndex?: number
@@ -58,6 +75,8 @@ export const useCatalogStore = defineStore(
     const viewMode = ref<'text' | 'card'>('text')
     const currentChapterId = ref<number | null>(null)
     const currentCatalogId = ref<number | null>(null)
+    /** 卡片画布当前所在父层；null 表示组内顶层 */
+    const boardParentId = ref<number | null>(null)
 
     const textCatalogList = ref<Catalog[]>([])
     const cardCatalogList = ref<Catalog[]>([])
@@ -127,6 +146,21 @@ export const useCatalogStore = defineStore(
       return currentCatalogList.value.find((c) => c.id === currentCatalogId.value)
     })
 
+    const boardChapters = computed(() => {
+      if (!isCard.value || !currentCatalog.value) return currentCatalog.value?.charpterList ?? []
+      return childrenOf(currentCatalog.value.charpterList, boardParentId.value)
+    })
+
+    const boardBreadcrumb = computed(() => {
+      if (!isCard.value || !currentCatalog.value) return []
+      return breadcrumbFor(currentCatalog.value.charpterList, boardParentId.value)
+    })
+
+    const cardTreeForCurrent = computed(() => {
+      if (!currentCatalog.value) return []
+      return flattenCardTree(currentCatalog.value.charpterList)
+    })
+
     const chapterInCurrentMode = (chapterId: number) =>
       currentCatalogList.value.some((catalog) =>
         catalog.charpterList.some((chapter) => chapter.id === chapterId),
@@ -187,6 +221,10 @@ export const useCatalogStore = defineStore(
       if (from === to) return false
       const catalog = findCatalogAnywhere(catalogId)
       if (!catalog) return false
+      const fromChapter = catalog.charpterList.find((chapter) => chapter.id === from)
+      const toChapter = catalog.charpterList.find((chapter) => chapter.id === to)
+      if (!fromChapter || !toChapter) return false
+      if (!sameCardParent(fromChapter.parentId, toChapter.parentId)) return false
       if (!catalog.links) catalog.links = []
       if (catalog.links.some((link) => link.from === from && link.to === to)) return false
       catalog.links.push({ from, to })
@@ -228,6 +266,9 @@ export const useCatalogStore = defineStore(
       }
       if (currentChapterId.value != null && idSet.has(currentChapterId.value)) {
         currentChapterId.value = null
+      }
+      if (boardParentId.value != null && idSet.has(boardParentId.value)) {
+        boardParentId.value = null
       }
     }
 
@@ -290,11 +331,16 @@ export const useCatalogStore = defineStore(
         !currentCatalogList.value.some((c) => c.id === currentCatalogId.value)
       ) {
         currentCatalogId.value = null
+        boardParentId.value = null
+      }
+      if (boardParentId.value != null && !findChapter(boardParentId.value)) {
+        boardParentId.value = null
       }
     }
 
     const setViewMode = (mode: 'text' | 'card') => {
       viewMode.value = mode
+      if (mode !== 'card') boardParentId.value = null
       clearSelectionIfMissing()
     }
 
@@ -302,10 +348,13 @@ export const useCatalogStore = defineStore(
       currentChapterId.value = id
       if (id == null) return
       for (const catalog of currentCatalogList.value) {
-        if (catalog.charpterList.some((chapter) => chapter.id === id)) {
-          currentCatalogId.value = catalog.id
-          return
+        const chapter = catalog.charpterList.find((item) => item.id === id)
+        if (!chapter) continue
+        currentCatalogId.value = catalog.id
+        if (isCard.value) {
+          boardParentId.value = chapter.parentId ?? null
         }
+        return
       }
     }
 
@@ -325,11 +374,42 @@ export const useCatalogStore = defineStore(
       searchLibrary(textCatalogList.value, cardCatalogList.value, query)
 
     const selectCatalog = (id: number) => {
+      if (currentCatalogId.value !== id) {
+        boardParentId.value = null
+      }
       currentCatalogId.value = id
       if (!isCard.value) return
       const catalog = currentCatalogList.value.find((item) => item.id === id)
       const stays = catalog?.charpterList.some((chapter) => chapter.id === currentChapterId.value)
       if (!stays) currentChapterId.value = null
+    }
+
+    const setBoardParent = (parentId: number | null) => {
+      if (!isCard.value) return
+      if (parentId != null && !findChapter(parentId)) return
+      boardParentId.value = parentId
+      currentChapterId.value = null
+    }
+
+    const enterCardChildren = (chapterId: number) => {
+      if (!isCard.value) return
+      if (!findChapter(chapterId)) return
+      currentCatalogId.value =
+        currentCatalogList.value.find((catalog) =>
+          catalog.charpterList.some((chapter) => chapter.id === chapterId),
+        )?.id ?? currentCatalogId.value
+      boardParentId.value = chapterId
+      currentChapterId.value = null
+    }
+
+    const childCount = (chapterId: number) => {
+      for (const list of allCatalogLists()) {
+        for (const catalog of list) {
+          if (!catalog.charpterList.some((chapter) => chapter.id === chapterId)) continue
+          return childCountOf(catalog.charpterList, chapterId)
+        }
+      }
+      return 0
     }
 
     const updateChapterContent = (id: number, html: string) => {
@@ -353,17 +433,30 @@ export const useCatalogStore = defineStore(
       if (isCard.value) currentChapterId.value = null
     }
 
-    const creatChapter = (catalogId: number, options?: { pos?: { x: number; y: number } }) => {
+    const creatChapter = (
+      catalogId: number,
+      options?: { pos?: { x: number; y: number }; parentId?: number | null },
+    ) => {
       const target = currentCatalogList.value.find((c) => c.id === catalogId)
       if (!target) return
       const newId = createId()
+      const parentId =
+        options && 'parentId' in options
+          ? (options.parentId ?? undefined)
+          : isCard.value
+            ? (boardParentId.value ?? undefined)
+            : undefined
+      const siblings = isCard.value
+        ? childrenOf(target.charpterList, parentId ?? null)
+        : target.charpterList
       const newChapter: Chapter = {
         id: newId,
         name: isCard.value ? '未命名卡片' : '未命名章节',
         content: '',
       }
+      if (parentId != null) newChapter.parentId = parentId
       if (isCard.value) {
-        newChapter.pos = options?.pos ?? defaultCardPos(target.charpterList.length)
+        newChapter.pos = options?.pos ?? defaultCardPos(siblings.length)
         newChapter.size = defaultCardSize()
         newChapter.zIndex = nextZIndex(target.charpterList)
       }
@@ -371,6 +464,7 @@ export const useCatalogStore = defineStore(
       currentChapterId.value = newId
       currentCatalogId.value = catalogId
       if (isCard.value) {
+        boardParentId.value = parentId ?? null
         recordBoardAction({ type: 'addCard', catalogId, chapter: cloneChapter(newChapter) })
       }
     }
@@ -476,13 +570,15 @@ export const useCatalogStore = defineStore(
       currentCatalogList.value = currentCatalogList.value.filter((c) => c.id !== catalogId)
       if (currentCatalogId.value === catalogId) {
         currentCatalogId.value = null
+        boardParentId.value = null
       }
     }
 
     const deleteChapters = (catalogId: number, chapterIds: number[]) => {
       const target = findCatalogAnywhere(catalogId)
       if (!target) return
-      const idSet = new Set(chapterIds)
+      const idSet = collectSubtreeIds(target.charpterList, chapterIds)
+      if (idSet.size === 0) return
       const chapters = target.charpterList.filter((chapter) => idSet.has(chapter.id)).map(cloneChapter)
       if (chapters.length === 0) return
       const links = (target.links ?? [])
@@ -577,12 +673,48 @@ export const useCatalogStore = defineStore(
       currentCatalogId.value = catalogId
     }
 
+    /** 根据 Save the Cat 问答结果，新建一组已连线的 15 节拍卡片 */
+    const createSaveTheCatCatalog = (answers: SaveTheCatAnswers) => {
+      setViewMode('card')
+      const catalogId = createId()
+      const chapters: Chapter[] = SAVE_THE_CAT_BEATS.map((beat, index) => ({
+        id: createId(),
+        name: beat.name,
+        content: buildSaveTheCatBeatContent(beat, answers),
+        pos: saveTheCatCardPos(index),
+        size: defaultCardSize(),
+        zIndex: index + 1,
+      }))
+      const links: CardLink[] = []
+      for (let i = 0; i < chapters.length - 1; i += 1) {
+        const from = chapters[i]
+        const to = chapters[i + 1]
+        if (!from || !to) continue
+        links.push({ from: from.id, to: to.id })
+      }
+      const catalog: Catalog = {
+        id: catalogId,
+        name: catalogNameFromSaveTheCat(answers),
+        isCatalogExpanded: true,
+        charpterList: chapters,
+        links,
+      }
+      cardCatalogList.value.push(catalog)
+      currentCatalogId.value = catalogId
+      boardParentId.value = null
+      currentChapterId.value = chapters[0]?.id ?? null
+      undoStack.value = []
+      redoStack.value = []
+      return catalogId
+    }
+
     return {
       currentWidth,
       isMenueResizing,
       viewMode,
       currentChapterId,
       currentCatalogId,
+      boardParentId,
       isMenueExpanded,
       isText,
       isCard,
@@ -591,6 +723,9 @@ export const useCatalogStore = defineStore(
       hasCatalogContent,
       currentChapter,
       currentCatalog,
+      boardChapters,
+      boardBreadcrumb,
+      cardTreeForCurrent,
       getCatalogById,
       findChapter,
       setViewMode,
@@ -598,6 +733,9 @@ export const useCatalogStore = defineStore(
       revealChapter,
       searchHits,
       selectCatalog,
+      setBoardParent,
+      enterCardChildren,
+      childCount,
       updateChapterContent,
       createCatalog,
       creatChapter,
@@ -633,6 +771,7 @@ export const useCatalogStore = defineStore(
       replaceLibrary,
       importVolumes,
       importChapters,
+      createSaveTheCatCatalog,
     }
   },
   {

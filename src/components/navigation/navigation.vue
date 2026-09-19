@@ -63,5 +63,32 @@ const settings = useSettingsStore()
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .navigation {
+    height: auto;
+    min-height: 52px;
+    padding: 8px 12px;
+    padding-top: max(8px, env(safe-area-inset-top));
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .brand-logo {
+    height: 28px;
+  }
+  .button-bar {
+    flex: 1 1 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 6px;
+    padding-bottom: 2px;
+  }
+  .button-bar::-webkit-scrollbar {
+    display: none;
+  }
 }
 </style>

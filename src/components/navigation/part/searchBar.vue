@@ -150,4 +150,20 @@ onUnmounted(() => window.removeEventListener('pointerdown', onPointerDown))
   color: var(--text-hint);
   font-size: 13px;
 }
+
+@media (max-width: 768px) {
+  .search {
+    flex: 1 1 120px;
+    width: auto;
+    min-width: 100px;
+  }
+  .results {
+    position: fixed;
+    top: auto;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-height: min(50dvh, 360px);
+  }
+}
 </style>

@@ -114,6 +114,12 @@ const disconnect = async () => {
   color: var(--text);
   font-size: 13px;
 }
+
+@media (max-width: 768px) {
+  .panel {
+    min-width: 0;
+  }
+}
 .row {
   display: flex;
   align-items: center;

@@ -28,4 +28,12 @@ const store = useCatalogStore()
   border-right: solid 2px var(--border);
   border-bottom: solid 2px var(--border);
 }
+
+@media (max-width: 768px) {
+  .toggle-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 14px;
+  }
+}
 </style>

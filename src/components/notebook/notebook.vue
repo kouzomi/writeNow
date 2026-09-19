@@ -1,21 +1,46 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useNotebookStore } from '@/stores/notebook'
+import { isMobile } from '@/utils/mobile'
 import notebookFold from './part/notebookFold.vue'
 import notebookPanel from './part/notebookPanel.vue'
 
 const store = useNotebookStore()
+
+const boxStyle = computed(() => {
+  if (isMobile.value && store.isExpanded) {
+    return {
+      right: '8px',
+      left: '8px',
+      top: 'auto',
+      bottom: 'max(8px, env(safe-area-inset-bottom))',
+      width: 'auto',
+      height: 'min(70dvh, 520px)',
+    }
+  }
+  if (isMobile.value) {
+    return {
+      right: '12px',
+      top: 'auto',
+      bottom: 'max(12px, env(safe-area-inset-bottom))',
+      width: '56px',
+      height: '56px',
+    }
+  }
+  return {
+    right: store.pos.right + 'px',
+    top: store.pos.top + 'px',
+    width: store.isExpanded ? store.size.width + 'px' : '64px',
+    height: store.isExpanded ? store.size.height + 'px' : '64px',
+  }
+})
 </script>
 
 <template>
   <div
     class="container"
-    :class="{ expanded: store.isExpanded, animating: store.isAnimating }"
-    :style="{
-      right: store.pos.right + 'px',
-      top: store.pos.top + 'px',
-      width: store.isExpanded ? store.size.width + 'px' : '64px',
-      height: store.isExpanded ? store.size.height + 'px' : '64px',
-    }"
+    :class="{ expanded: store.isExpanded, animating: store.isAnimating, mobile: isMobile }"
+    :style="boxStyle"
   >
     <notebookPanel v-if="store.isExpanded" />
     <notebookFold v-else />
@@ -40,6 +65,9 @@ const store = useNotebookStore()
   border-radius: 16px;
   overflow: hidden;
   cursor: default;
+}
+.container.mobile {
+  position: fixed;
 }
 .animating {
   transition:

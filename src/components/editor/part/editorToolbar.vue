@@ -171,4 +171,25 @@ button:disabled {
   opacity: 0.4;
   cursor: default;
 }
+
+@media (max-width: 768px) {
+  .toolbar {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 6px 10px;
+    gap: 6px;
+  }
+  .toolbar::-webkit-scrollbar {
+    display: none;
+  }
+  button {
+    height: 30px;
+    padding: 0 10px;
+    flex-shrink: 0;
+  }
+}
 </style>

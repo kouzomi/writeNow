@@ -3,6 +3,7 @@ import { computed, nextTick, ref } from 'vue'
 import { useCatalogStore } from '@/stores/shelf'
 import type { Catalog } from '@/stores/shelf'
 import { VueDraggable } from 'vue-draggable-plus'
+import { flattenCardTree } from '@/utils/cardHierarchy'
 import chapterItem from './chapterItem.vue'
 
 const props = defineProps<{
@@ -14,7 +15,9 @@ const chapters = computed({
   get: () => store.getCatalogById(props.catalog.id)?.charpterList || [],
   set: (val) => store.updateChapters(props.catalog.id, val),
 })
+const cardTree = computed(() => flattenCardTree(chapters.value))
 const isCatalogExpanded = computed(() => store.getCatalogById(props.catalog.id)?.isCatalogExpanded)
+const isActiveCatalog = computed(() => store.currentCatalogId === props.catalog.id)
 
 const editingCatalog = ref(false)
 const draftName = ref('')
@@ -43,13 +46,22 @@ const handleDeleteCatalog = () => {
   if (!confirm(message)) return
   store.deleteCatalog(props.catalog.id)
 }
+
+const addChapter = () => {
+  if (store.isCard) {
+    store.selectCatalog(props.catalog.id)
+    store.creatChapter(props.catalog.id, { parentId: store.boardParentId })
+    return
+  }
+  store.creatChapter(props.catalog.id)
+}
 </script>
 
 <template>
   <div class="catalog-block">
     <div
       class="tool-bar"
-      :class="{ isChosen: store.currentCatalogId === props.catalog.id }"
+      :class="{ isChosen: isActiveCatalog }"
       @click="store.selectCatalog(props.catalog.id)"
     >
       <button
@@ -72,11 +84,17 @@ const handleDeleteCatalog = () => {
         />
         <span v-else class="catalog-name">{{ props.catalog.name }}</span>
       </div>
-      <button class="add" @click.stop="store.creatChapter(props.catalog.id)">+</button>
+      <button class="add" @click.stop="addChapter">+</button>
       <button class="remove" @click.stop="handleDeleteCatalog">×</button>
     </div>
     <div class="chapter-list" v-if="isCatalogExpanded">
-      <VueDraggable v-model="chapters" :animation="180" :distance="8" filter=".remove,.name-input">
+      <VueDraggable
+        v-if="store.isText"
+        v-model="chapters"
+        :animation="180"
+        :distance="8"
+        filter=".remove,.name-input"
+      >
         <chapterItem
           v-for="item in chapters"
           :key="item.id"
@@ -84,6 +102,15 @@ const handleDeleteCatalog = () => {
           :chapter="item"
         />
       </VueDraggable>
+      <div v-else>
+        <chapterItem
+          v-for="item in cardTree"
+          :key="item.chapter.id"
+          :catalog-id="props.catalog.id"
+          :chapter="item.chapter"
+          :depth="item.depth"
+        />
+      </div>
     </div>
   </div>
 </template>

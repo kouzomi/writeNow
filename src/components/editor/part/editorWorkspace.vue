@@ -147,4 +147,25 @@ const fontSizePx = computed(() => `${settings.fontSize}px`)
   font-size: 12px;
   flex-shrink: 0;
 }
+
+@media (max-width: 768px) {
+  .tiptap-editor :deep(.ProseMirror) {
+    max-width: none;
+    padding: 16px 14px 40px;
+  }
+  .start-hint {
+    top: 16px;
+    padding: 0 14px;
+  }
+  .empty-hint {
+    white-space: normal;
+    text-align: center;
+    padding: 0 24px;
+  }
+  .status {
+    height: 36px;
+    padding: 0 12px;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
 </style>

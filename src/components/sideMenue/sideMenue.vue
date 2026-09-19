@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useCatalogStore } from '@/stores/shelf'
+import { isMobile } from '@/utils/mobile'
 import sideContainer from './part/sideContainer.vue'
 import sideNavi from './part/sideNavi.vue'
 import sideToggle from './part/sideToggle.vue'
@@ -8,6 +9,7 @@ import SideTool from './part/sideTool.vue'
 const store = useCatalogStore()
 
 const onResizePointerDown = (event: PointerEvent) => {
+  if (isMobile.value) return
   if (!store.isMenueExpanded || event.button !== 0) return
   event.preventDefault()
   store.isMenueResizing = true
@@ -27,20 +29,38 @@ const onResizePointerDown = (event: PointerEvent) => {
   window.addEventListener('pointermove', onMove)
   window.addEventListener('pointerup', onUp)
 }
+
+const closeDrawer = () => {
+  if (isMobile.value) store.isMenueExpanded = false
+}
 </script>
 
 <template>
-  <div class="sidebar-wrapper" :class="{ collapsed: !store.isMenueExpanded }">
+  <div
+    v-if="isMobile && store.isMenueExpanded"
+    class="backdrop"
+    @click="closeDrawer"
+  ></div>
+  <div
+    class="sidebar-wrapper"
+    :class="{ collapsed: !store.isMenueExpanded, mobile: isMobile }"
+  >
     <div
       class="container"
       :class="{ collapsed: !store.isMenueExpanded, resizing: store.isMenueResizing }"
-      :style="{ width: (store.isMenueExpanded ? store.currentWidth : 0) + 'px' }"
+      :style="{
+        width: store.isMenueExpanded
+          ? isMobile
+            ? 'min(86vw, 320px)'
+            : store.currentWidth + 'px'
+          : '0px',
+      }"
     >
       <sideNavi></sideNavi>
       <SideTool></SideTool>
       <sideContainer></sideContainer>
       <div
-        v-if="store.isMenueExpanded"
+        v-if="store.isMenueExpanded && !isMobile"
         class="resize-handle"
         title="拖动调节宽度"
         @pointerdown="onResizePointerDown"
@@ -51,6 +71,12 @@ const onResizePointerDown = (event: PointerEvent) => {
 </template>
 
 <style scoped>
+.backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 90;
+  background: rgba(0, 0, 0, 0.35);
+}
 .sidebar-wrapper {
   position: absolute;
   top: 0;
@@ -59,6 +85,9 @@ const onResizePointerDown = (event: PointerEvent) => {
   z-index: 100;
   display: flex;
   align-items: flex-start;
+}
+.sidebar-wrapper.mobile {
+  padding-bottom: env(safe-area-inset-bottom);
 }
 .container {
   position: relative;
