@@ -22,9 +22,6 @@ const previewText = computed(() => {
   const text = props.chapter.content.replace(/<[^>]+>/g, '').trim()
   return text.slice(0, 24) || '尚未开始写作'
 })
-const kids = computed(() =>
-  store.isCard ? store.childCount(props.chapter.id) : 0,
-)
 const titlePad = computed(() => 15 + props.depth * 12)
 
 const startRename = async () => {
@@ -46,10 +43,7 @@ const cancelRename = () => {
 }
 
 const handleDelete = () => {
-  const extra = store.isCard && kids.value > 0 ? `（含 ${kids.value} 张子事件及更深层）` : ''
-  const message = store.isCard
-    ? `确定删除这张卡片${extra}？`
-    : '确定删除这个章节？'
+  const message = store.isCard ? '确定删除这张卡片？' : '确定删除这个章节？'
   if (!confirm(message)) return
   store.deleteChapter(props.catalogId, props.chapter.id)
 }
@@ -57,12 +51,6 @@ const handleDelete = () => {
 const onSelect = () => {
   store.selectChapter(props.chapter.id)
   if (store.isCard) store.bringChapterToFront(props.chapter.id)
-  if (isMobile.value) store.isMenueExpanded = false
-}
-
-const enterChildren = () => {
-  store.selectCatalog(props.catalogId)
-  store.enterCardChildren(props.chapter.id)
   if (isMobile.value) store.isMenueExpanded = false
 }
 </script>
@@ -87,19 +75,9 @@ const enterChildren = () => {
       />
       <label v-else class="title" :style="{ paddingLeft: titlePad + 'px' }">
         {{ chapter.name }}
-        <span v-if="kids > 0" class="kids">{{ kids }}</span>
       </label>
       <label v-if="store.isText" class="summary">{{ previewText }}</label>
     </div>
-    <button
-      v-if="store.isCard"
-      class="enter"
-      type="button"
-      title="进入子事件"
-      @click.stop="enterChildren"
-    >
-      ↘
-    </button>
     <button class="remove" @click.stop="handleDelete">×</button>
   </div>
 </template>

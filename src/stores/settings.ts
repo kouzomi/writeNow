@@ -9,7 +9,6 @@ export const useSettingsStore = defineStore(
     const fontSize = ref(17)
     const showNotebook = ref(true)
     const colorScheme = ref<ColorScheme>('light')
-    const lastBackupAt = ref<number | null>(null)
     const cloudEnabled = ref(false)
     const cloudAccountName = ref<string | null>(null)
     const lastCloudSyncAt = ref<number | null>(null)
@@ -26,10 +25,6 @@ export const useSettingsStore = defineStore(
 
     const setColorScheme = (scheme: ColorScheme) => {
       colorScheme.value = scheme
-    }
-
-    const markBackupNow = () => {
-      lastBackupAt.value = Date.now()
     }
 
     const markCloudSynced = (etag: string, contentKey: string) => {
@@ -50,7 +45,6 @@ export const useSettingsStore = defineStore(
       fontSize,
       showNotebook,
       colorScheme,
-      lastBackupAt,
       cloudEnabled,
       cloudAccountName,
       lastCloudSyncAt,
@@ -59,7 +53,6 @@ export const useSettingsStore = defineStore(
       setFontSize,
       setShowNotebook,
       setColorScheme,
-      markBackupNow,
       markCloudSynced,
       clearCloudSession,
     }

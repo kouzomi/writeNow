@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useCatalogStore } from '@/stores/shelf'
-import saveTheCatWizard from '@/components/guide/saveTheCatWizard.vue'
 
 const store = useCatalogStore()
 </script>
@@ -9,7 +8,6 @@ const store = useCatalogStore()
   <div class="navigation">
     <label>目录</label>
     <div class="actions">
-      <saveTheCatWizard v-if="store.isCard" />
       <button type="button" @click="store.createCatalog">{{ store.isCard ? '+ 组' : '+ 卷' }}</button>
     </div>
   </div>

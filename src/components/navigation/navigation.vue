@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import backupMenu from './part/backupMenu.vue'
 import markdownMenu from './part/markdownMenu.vue'
 import settingsMenu from './part/settingsMenu.vue'
 import searchBar from './part/searchBar.vue'
@@ -23,7 +22,6 @@ const settings = useSettingsStore()
     <div class="button-bar">
       <searchBar />
       <markdownMenu />
-      <backupMenu />
       <syncStatus />
       <settingsMenu />
     </div>

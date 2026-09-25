@@ -50,7 +50,7 @@ const handleDeleteCatalog = () => {
 const addChapter = () => {
   if (store.isCard) {
     store.selectCatalog(props.catalog.id)
-    store.creatChapter(props.catalog.id, { parentId: store.boardParentId })
+    store.creatChapter(props.catalog.id)
     return
   }
   store.creatChapter(props.catalog.id)

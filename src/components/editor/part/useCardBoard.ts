@@ -28,6 +28,10 @@ export const useCardBoard = () => {
   const canvasRef = ref<HTMLElement | null>(null)
   const selectedLink = ref<{ from: number; to: number } | null>(null)
   const selectedIds = ref<number[]>([])
+  const tool = ref<'select' | 'slot' | 'label'>('select')
+  const selectedSlotId = ref<number | null>(null)
+  const selectedLabelId = ref<number | null>(null)
+  const editingLabelId = ref<number | null>(null)
   const draft = ref<{ from: number; x: number; y: number } | null>(null)
   const marquee = ref<CardBox | null>(null)
   const scale = ref(1)
@@ -71,6 +75,10 @@ export const useCardBoard = () => {
       scale.value = next?.scale ?? 1
       selectedIds.value = []
       selectedLink.value = null
+      selectedSlotId.value = null
+      selectedLabelId.value = null
+      editingLabelId.value = null
+      tool.value = 'select'
       void nextTick(() => {
         if (!viewportRef.value) return
         viewportRef.value.scrollLeft = next?.left ?? 0
@@ -294,14 +302,8 @@ export const useCardBoard = () => {
         setSelection([chapterId])
         return
       }
-      const items = origins.flatMap((origin) => {
-        const item = store.findChapter(origin.id)
-        if (!item) return []
-        const to = { ...(item.pos ?? origin.from) }
-        if (to.x === origin.from.x && to.y === origin.from.y) return []
-        return [{ id: origin.id, from: origin.from, to }]
-      })
-      store.recordMoveCards(items)
+      store.placeCards(origins.map((origin) => ({ id: origin.id, from: origin.from })))
+      setSelection([])
     }
 
     window.addEventListener('pointermove', onMove)
@@ -407,6 +409,141 @@ export const useCardBoard = () => {
     window.addEventListener('pointerup', onUp)
   }
 
+  const clearBoardSelection = () => {
+    selectedSlotId.value = null
+    selectedLabelId.value = null
+    editingLabelId.value = null
+  }
+
+  const selectSlot = (slotId: number) => {
+    selectedSlotId.value = slotId
+    selectedLabelId.value = null
+    editingLabelId.value = null
+    selectedLink.value = null
+    setSelection([])
+  }
+
+  const selectLabel = (labelId: number) => {
+    selectedLabelId.value = labelId
+    selectedSlotId.value = null
+    selectedLink.value = null
+    setSelection([])
+  }
+
+  const beginSlotDrag = (slotId: number, event: PointerEvent) => {
+    if (event.button !== 0) return
+    const slot = store.currentCatalog?.slots?.find((item) => item.id === slotId)
+    if (!slot) return
+    selectSlot(slotId)
+    const origin = { x: slot.x, y: slot.y, width: slot.width, height: slot.height }
+    const cards = slot.cardIds.flatMap((id) => {
+      const chapter = store.findChapter(id)
+      if (!chapter?.pos) return []
+      return [{ id, x: chapter.pos.x, y: chapter.pos.y }]
+    })
+    let moved = false
+    const onMove = (moveEvent: PointerEvent) => {
+      const dx = (moveEvent.clientX - event.clientX) / scale.value
+      const dy = (moveEvent.clientY - event.clientY) / scale.value
+      if (!moved && dx * dx + dy * dy < 25) return
+      moved = true
+      store.shiftSlot(slotId, origin.x + dx, origin.y + dy, origin, cards)
+    }
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      if (!moved) return
+      store.moveSlot(slotId, origin, cards.map((card) => ({ id: card.id, from: { x: card.x, y: card.y } })))
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+
+  const beginSlotResize = (slotId: number, event: PointerEvent) => {
+    if (event.button !== 0) return
+    const slot = store.currentCatalog?.slots?.find((item) => item.id === slotId)
+    if (!slot) return
+    event.preventDefault()
+    selectSlot(slotId)
+    const origin = { width: slot.width, height: slot.height }
+    const cardsFrom = slot.cardIds.flatMap((id) => {
+      const chapter = store.findChapter(id)
+      if (!chapter?.pos) return []
+      return [{ id, from: { ...chapter.pos } }]
+    })
+    const onMove = (moveEvent: PointerEvent) => {
+      store.resizeSlotLive(
+        slotId,
+        origin.width + (moveEvent.clientX - event.clientX) / scale.value,
+        origin.height + (moveEvent.clientY - event.clientY) / scale.value,
+      )
+    }
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      store.resizeSlot(slotId, origin, cardsFrom)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+
+  const beginLabelDrag = (labelId: number, event: PointerEvent) => {
+    if (event.button !== 0) return
+    const label = store.currentCatalog?.labels?.find((item) => item.id === labelId)
+    if (!label) return
+    selectLabel(labelId)
+    const origin = { x: label.x, y: label.y }
+    let moved = false
+    const onMove = (moveEvent: PointerEvent) => {
+      const dx = (moveEvent.clientX - event.clientX) / scale.value
+      const dy = (moveEvent.clientY - event.clientY) / scale.value
+      if (!moved && dx * dx + dy * dy < 25) return
+      moved = true
+      store.shiftLabel(labelId, origin.x + dx, origin.y + dy)
+    }
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      if (moved) store.recordLabelMove(labelId, origin)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+
+  const beginDrawSlot = (event: PointerEvent) => {
+    if (event.button !== 0) return
+    event.preventDefault()
+    const origin = canvasPoint(event)
+    marquee.value = { x: origin.x, y: origin.y, width: 0, height: 0 }
+    const onMove = (moveEvent: PointerEvent) => {
+      const point = canvasPoint(moveEvent)
+      marquee.value = normalizeRect(origin.x, origin.y, point.x, point.y)
+    }
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      if (viewportRef.value?.hasPointerCapture(event.pointerId)) {
+        viewportRef.value.releasePointerCapture(event.pointerId)
+      }
+      const rect = marquee.value
+      marquee.value = null
+      if (!rect || rect.width < 40 || rect.height < 40) return
+      const id = store.addSlot(rect)
+      if (id != null) {
+        selectedSlotId.value = id
+        selectedLabelId.value = null
+        tool.value = 'select'
+      }
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    try {
+      viewportRef.value?.setPointerCapture(event.pointerId)
+    } catch {
+      /* 指针已经结束时忽略 */
+    }
+  }
+
   const onViewportPointerDown = (event: PointerEvent) => {
     if (event.button === 1) {
       event.preventDefault()
@@ -414,17 +551,56 @@ export const useCardBoard = () => {
       beginPan(event)
       return
     }
+    const target = event.target
+    const inSlot =
+      target instanceof Element && Boolean(target.closest('.slot')) && !target.closest('.card, button, textarea, input, .label')
+    if (tool.value === 'label' && event.button === 0 && (target === canvasRef.value || inSlot)) {
+      event.stopPropagation()
+      const point = canvasPoint(event)
+      const id = store.addLabel(point)
+      if (id != null) {
+        selectedLabelId.value = id
+        editingLabelId.value = id
+        selectedSlotId.value = null
+        tool.value = 'select'
+      }
+      return
+    }
+    const drawTarget = event.target
+    const blocked =
+      drawTarget instanceof Element &&
+      Boolean(drawTarget.closest('.card, button, textarea, input, .label, .resize'))
+    const onCanvas = drawTarget instanceof Node && Boolean(canvasRef.value?.contains(drawTarget))
+    if (tool.value === 'slot' && event.button === 0 && onCanvas && !blocked) {
+      event.stopPropagation()
+      beginDrawSlot(event)
+      return
+    }
     if (event.target !== canvasRef.value) {
       if (event.target === viewportRef.value) {
         setSelection([])
         selectedLink.value = null
+        clearBoardSelection()
       }
       return
     }
+    if (tool.value === 'label') {
+      const point = canvasPoint(event)
+      const id = store.addLabel(point)
+      if (id != null) {
+        selectedLabelId.value = id
+        editingLabelId.value = id
+        selectedSlotId.value = null
+        tool.value = 'select'
+      }
+      return
+    }
+    clearBoardSelection()
     beginBoxSelect(event)
   }
 
   const onCanvasDblClick = (event: MouseEvent) => {
+    if (tool.value !== 'select') return
     if (event.target !== canvasRef.value || !canvasRef.value) return
     if (store.currentCatalogId == null) return
     const point = canvasPoint(event)
@@ -447,10 +623,27 @@ export const useCardBoard = () => {
     if (event.key === 'Escape') {
       setSelection([])
       selectedLink.value = null
+      clearBoardSelection()
+      tool.value = 'select'
       return
     }
     if (event.key !== 'Delete' && event.key !== 'Backspace') return
     if (isTypingTarget(event.target)) return
+    if (selectedSlotId.value != null) {
+      event.preventDefault()
+      if (!confirm('确定删除这个卡槽？槽里的卡片会留在原地。')) return
+      store.deleteSlot(selectedSlotId.value)
+      selectedSlotId.value = null
+      return
+    }
+    if (selectedLabelId.value != null) {
+      event.preventDefault()
+      if (!confirm('确定删除这段标注？')) return
+      store.deleteLabel(selectedLabelId.value)
+      selectedLabelId.value = null
+      editingLabelId.value = null
+      return
+    }
     if (selectedLink.value) {
       event.preventDefault()
       store.removeCardLink(selectedLink.value.from, selectedLink.value.to)
@@ -506,6 +699,10 @@ export const useCardBoard = () => {
     cards,
     selectedLink,
     selectedIds,
+    tool,
+    selectedSlotId,
+    selectedLabelId,
+    editingLabelId,
     draftPath,
     linkPaths,
     marquee,
@@ -522,6 +719,14 @@ export const useCardBoard = () => {
     beginResize,
     beginLink,
     selectLink,
+    selectSlot,
+    selectLabel,
+    beginSlotDrag,
+    beginSlotResize,
+    beginLabelDrag,
+    setTool: (next: 'select' | 'slot' | 'label') => {
+      tool.value = next
+    },
     onViewportPointerDown,
     onCanvasDblClick,
   }

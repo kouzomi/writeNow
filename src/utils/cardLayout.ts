@@ -92,3 +92,88 @@ export const normalizeRect = (x1: number, y1: number, x2: number, y2: number): C
 
 export const clampZoom = (value: number) =>
   Math.min(CARD_ZOOM_MAX, Math.max(CARD_ZOOM_MIN, Math.round(value * 100) / 100))
+
+export const SLOT_TITLE_HEIGHT = 28
+export const SLOT_TEXT_MIN = 96
+export const SLOT_PAD = 12
+export const SLOT_GAP = 12
+export const SLOT_MIN_WIDTH = 220
+export const SLOT_MIN_HEIGHT = 180
+export const LABEL_WIDTH = 160
+
+export type SlotFrame = { id: number; x: number; y: number; width: number; height: number }
+
+export const clampSlotBox = (box: CardBox): CardBox => {
+  const width = Math.min(Math.max(SLOT_MIN_WIDTH, box.width), CARD_CANVAS_WIDTH)
+  const height = Math.min(Math.max(SLOT_MIN_HEIGHT, box.height), CARD_CANVAS_HEIGHT)
+  const pos = clampCardPos(box.x, box.y, width, height)
+  return { x: pos.x, y: pos.y, width, height }
+}
+
+export const cardCenter = (chapter: {
+  pos?: { x: number; y: number }
+  size?: { width: number; height: number }
+  collapsed?: boolean
+}) => {
+  const box = cardBox(chapter)
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+}
+
+export const nearestSlotAtCenter = <T extends SlotFrame>(
+  slots: T[],
+  center: { x: number; y: number },
+): T | null => {
+  let best: T | null = null
+  let bestDist = Infinity
+  for (const slot of slots) {
+    if (!pointInBox(center.x, center.y, slot)) continue
+    const dx = center.x - (slot.x + slot.width / 2)
+    const dy = center.y - (slot.y + slot.height / 2)
+    const dist = dx * dx + dy * dy
+    if (dist < bestDist) {
+      best = slot
+      bestDist = dist
+    }
+  }
+  return best
+}
+
+export const slotWrapSize = (
+  slot: { width: number; height: number },
+  cards: { width: number; height: number }[],
+) => {
+  const cardsWidth = cards.reduce((max, card) => Math.max(max, card.width), 0)
+  let cardsHeight = 0
+  cards.forEach((card, index) => {
+    if (index > 0) cardsHeight += SLOT_GAP
+    cardsHeight += card.height
+  })
+  const stack = cards.length ? SLOT_PAD + cardsHeight + SLOT_PAD : SLOT_PAD
+  const minWidth = Math.max(SLOT_MIN_WIDTH, cardsWidth + SLOT_PAD * 2)
+  const minHeight = Math.max(SLOT_MIN_HEIGHT, SLOT_TEXT_MIN + stack)
+  const width = Math.max(slot.width, minWidth)
+  const height = Math.max(slot.height, minHeight)
+  return { width, height, textHeight: height - stack }
+}
+
+export const gridInSlot = (
+  slot: { x: number; y: number; width: number },
+  cards: { id: number; width: number; height: number; x: number; y: number }[],
+  textHeight: number,
+) => {
+  const innerRight = slot.x + slot.width - SLOT_PAD
+  let x = slot.x + SLOT_PAD
+  let y = slot.y + textHeight + SLOT_PAD
+  let rowHeight = 0
+  return cards.map((card) => {
+    if (x > slot.x + SLOT_PAD && x + card.width > innerRight) {
+      x = slot.x + SLOT_PAD
+      y += rowHeight + SLOT_GAP
+      rowHeight = 0
+    }
+    const pos = { id: card.id, x, y }
+    x += card.width + SLOT_GAP
+    rowHeight = Math.max(rowHeight, card.height)
+    return pos
+  })
+}

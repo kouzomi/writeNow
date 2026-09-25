@@ -10,6 +10,8 @@ const props = defineProps<{
   chapter: Chapter
   editor?: Editor
   chosen?: boolean
+  originX?: number
+  originY?: number
 }>()
 
 const emit = defineEmits<{
@@ -29,7 +31,6 @@ const cardHeight = computed(() =>
   props.chapter.collapsed ? CARD_TITLE_HEIGHT : (props.chapter.size?.height ?? CARD_HEIGHT),
 )
 const selected = computed(() => props.chosen ?? store.currentChapterId === props.chapter.id)
-const kids = computed(() => store.childCount(props.chapter.id))
 const previewText = computed(() => {
   const text = props.chapter.content.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim()
   return text || '空白卡片'
@@ -54,13 +55,8 @@ const cancelRename = () => {
 }
 
 const handleDelete = () => {
-  const extra = kids.value > 0 ? `（含 ${kids.value} 张子事件及更深层）` : ''
-  if (!confirm(`确定删除这张卡片${extra}？`)) return
+  if (!confirm('确定删除这张卡片？')) return
   store.deleteChapter(props.catalogId, props.chapter.id)
-}
-
-const enterChildren = () => {
-  store.enterCardChildren(props.chapter.id)
 }
 
 const onSelect = (event: PointerEvent) => {
@@ -91,8 +87,8 @@ const toggleCollapsed = () => {
     class="card"
     :class="{ isChosen: selected, isCollapsed: chapter.collapsed }"
     :style="{
-      left: (chapter.pos?.x ?? 0) + 'px',
-      top: (chapter.pos?.y ?? 0) + 'px',
+      left: (chapter.pos?.x ?? 0) - (originX ?? 0) + 'px',
+      top: (chapter.pos?.y ?? 0) - (originY ?? 0) + 'px',
       zIndex: chapter.zIndex ?? 1,
       width: cardWidth + 'px',
       height: cardHeight + 'px',
@@ -113,15 +109,6 @@ const toggleCollapsed = () => {
         @blur="commitRename"
       />
       <span v-else class="title">{{ chapter.name }}</span>
-      <button
-        type="button"
-        class="enter"
-        :title="kids > 0 ? `进入子事件（${kids}）` : '进入子事件层'"
-        @pointerdown.stop
-        @click.stop="enterChildren"
-      >
-        {{ kids > 0 ? `↘${kids}` : '↘' }}
-      </button>
       <div
         class="link-handle"
         title="拖到另一张卡来连线"
@@ -207,24 +194,15 @@ const toggleCollapsed = () => {
   cursor: crosshair;
   flex-shrink: 0;
 }
-.enter,
 .fold,
 .remove {
   height: 24px;
+  width: 24px;
   border: none;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   flex-shrink: 0;
-}
-.enter {
-  min-width: 24px;
-  padding: 0 4px;
-  font-size: 12px;
-}
-.fold,
-.remove {
-  width: 24px;
   font-size: 16px;
 }
 .body {

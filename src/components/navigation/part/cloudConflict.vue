@@ -1,14 +1,8 @@
 <script setup lang="ts">
-import { exportLibraryBackup } from '@/utils/backup'
 import { cloudSync, resolveCloudConflict } from '@/utils/cloud/sync'
 
 const chooseLocal = () => {
   void resolveCloudConflict('local')
-}
-
-const exportThenRemote = () => {
-  exportLibraryBackup()
-  void resolveCloudConflict('remote')
 }
 
 const chooseRemote = () => {
@@ -21,10 +15,9 @@ const chooseRemote = () => {
   <div v-if="cloudSync.conflict" class="overlay">
     <div class="dialog" role="dialog" aria-labelledby="cloud-conflict-title">
       <p id="cloud-conflict-title">本机和 OneDrive 上的书库都有改动，无法自动合并。</p>
-      <p class="hint">选一边覆盖另一边。选云端前可以先导出本机备份。</p>
+      <p class="hint">选一边覆盖另一边。</p>
       <div class="actions">
         <button type="button" :disabled="cloudSync.syncing" @click="chooseLocal">用本机覆盖云端</button>
-        <button type="button" :disabled="cloudSync.syncing" @click="exportThenRemote">先导出本机，再用云端</button>
         <button type="button" :disabled="cloudSync.syncing" @click="chooseRemote">用云端覆盖本机</button>
       </div>
     </div>

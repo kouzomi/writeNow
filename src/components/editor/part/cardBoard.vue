@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { Editor } from '@tiptap/vue-3'
 import { CARD_CANVAS_HEIGHT, CARD_CANVAS_WIDTH } from '@/utils/cardLayout'
 import { useCardBoard } from './useCardBoard'
+import boardLabel from './boardLabel.vue'
 import cardItem from './cardItem.vue'
+import slotItem from './slotItem.vue'
 
-defineProps<{
+const props = defineProps<{
   editor?: Editor
 }>()
 
@@ -16,6 +19,10 @@ const {
   cards,
   selectedLink,
   selectedIds,
+  tool,
+  selectedSlotId,
+  selectedLabelId,
+  editingLabelId,
   draftPath,
   linkPaths,
   marquee,
@@ -32,9 +39,29 @@ const {
   beginResize,
   beginLink,
   selectLink,
+  selectSlot,
+  selectLabel,
+  beginSlotDrag,
+  beginSlotResize,
+  beginLabelDrag,
+  setTool,
   onViewportPointerDown,
   onCanvasDblClick,
 } = useCardBoard()
+
+const looseCards = computed(() => {
+  const held = new Set((catalog.value?.slots ?? []).flatMap((slot) => slot.cardIds))
+  return cards.value.filter((card) => !held.has(card.id))
+})
+
+const clearCards = () => {
+  if (!catalog.value || cards.value.length === 0) return
+  if (!confirm('确定清空这一组的全部卡片？')) return
+  store.deleteChapters(
+    catalog.value.id,
+    cards.value.map((card) => card.id),
+  )
+}
 </script>
 
 <template>
@@ -49,22 +76,22 @@ const {
         >
           {{ catalog?.name || '未选择组' }}
         </button>
-        <template v-for="item in store.boardBreadcrumb" :key="item.id">
-          <span class="crumb-sep">/</span>
-          <button type="button" class="crumb-item" @click="store.setBoardParent(item.id)">
-            {{ item.name }}
-          </button>
-        </template>
       </nav>
       <span class="count">{{ catalog ? `${cards.length} 张卡片` : '' }}</span>
-      <span class="hint desktop-only">Ctrl+滚轮缩放 · 中键拖动画布 · 卡片可进入子事件</span>
-      <span class="hint mobile-only">双指滚动画布 · ↘ 进入子事件</span>
+      <span class="hint desktop-only">Ctrl+滚轮缩放 · 中键拖动画布</span>
+      <span class="hint mobile-only">双指滚动画布</span>
       <div class="zoom">
         <button type="button" title="缩小" @click="nudgeZoom(-1)">−</button>
         <button type="button" class="zoom-label" title="重置缩放" @click="resetZoom">{{ zoomLabel }}</button>
         <button type="button" title="放大" @click="nudgeZoom(1)">+</button>
       </div>
+      <div class="tools">
+        <button type="button" :class="{ isOn: tool === 'select' }" :disabled="!catalog" @click="setTool('select')">选择</button>
+        <button type="button" :class="{ isOn: tool === 'slot' }" :disabled="!catalog" @pointerdown.stop.prevent="setTool('slot')">卡槽</button>
+        <button type="button" :class="{ isOn: tool === 'label' }" :disabled="!catalog" @click="setTool('label')">标注</button>
+      </div>
       <button type="button" :disabled="!catalog" @click="addCard()">新建卡片</button>
+      <button type="button" :disabled="!catalog || cards.length === 0" @click="clearCards">清空卡片</button>
     </div>
     <div
       ref="viewportRef"
@@ -85,8 +112,38 @@ const {
             height: CARD_CANVAS_HEIGHT + 'px',
             transform: `scale(${scale})`,
           }"
+          :class="{ isDrawing: tool !== 'select' }"
           @dblclick="onCanvasDblClick"
         >
+          <slotItem
+            v-for="frame in catalog.slots ?? []"
+            :key="frame.id"
+            :frame="frame"
+            :catalog-id="catalog.id"
+            :chosen="selectedSlotId === frame.id"
+            :tool="tool"
+            :selected-ids="selectedIds"
+            :editor="props.editor"
+            :current-chapter-id="store.currentChapterId"
+            :labeling="tool === 'label'"
+            @select="selectSlot(frame.id)"
+            @dragstart="beginSlotDrag(frame.id, $event)"
+            @resizestart="beginSlotResize(frame.id, $event)"
+            @card-select="onCardSelect"
+            @card-drag="beginDrag"
+            @card-resize="beginResize"
+            @card-link="beginLink"
+          />
+          <boardLabel
+            v-for="label in catalog.labels ?? []"
+            :key="label.id"
+            :label="label"
+            :chosen="selectedLabelId === label.id"
+            :auto-edit="editingLabelId === label.id"
+            @select="selectLabel(label.id)"
+            @dragstart="beginLabelDrag(label.id, $event)"
+            @edited="editingLabelId = null"
+          />
           <svg class="links" :width="CARD_CANVAS_WIDTH" :height="CARD_CANVAS_HEIGHT">
             <defs>
               <marker
@@ -135,7 +192,7 @@ const {
             />
           </svg>
           <cardItem
-            v-for="item in cards"
+            v-for="item in looseCards"
             :key="item.id"
             :catalog-id="catalog.id"
             :chapter="item"
@@ -230,6 +287,7 @@ const {
   margin-left: auto;
 }
 .zoom button,
+.tools button,
 .board-bar > button {
   height: 24px;
   padding: 0 10px;
@@ -242,6 +300,18 @@ const {
 .zoom-label {
   min-width: 52px;
 }
+.tools {
+  display: flex;
+  gap: 4px;
+}
+.tools button.isOn {
+  background: var(--bg-selected-soft);
+  border-color: var(--bg-selected);
+}
+.canvas.isDrawing {
+  cursor: crosshair;
+}
+.tools button:disabled,
 .board-bar > button:disabled {
   opacity: 0.4;
   cursor: default;
@@ -305,6 +375,12 @@ const {
   opacity: 0.55;
   pointer-events: none;
 }
+.canvas.isDrawing .marquee {
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  opacity: 1;
+}
 .empty-hint {
   position: absolute;
   inset: 0;
@@ -348,6 +424,7 @@ const {
     margin-left: 0;
   }
   .zoom button,
+  .tools button,
   .board-bar > button {
     height: 30px;
     min-width: 36px;
